@@ -1,18 +1,18 @@
 # Lessons: cryptography
 
-Lineage `b7c3c37e27901c4c9a8005759db2180082e495c847c5bb4e4d85545753213024` on [https://github.com/anza-xyz/cryptography](https://github.com/anza-xyz/cryptography) at `3efe73c7395f735f073bd25162cdc2fb4333f570`. 4 published attempts.
+Lineage `b7c3c37e27901c4c9a8005759db2180082e495c847c5bb4e4d85545753213024` on [https://github.com/anza-xyz/cryptography](https://github.com/anza-xyz/cryptography) at `3efe73c7395f735f073bd25162cdc2fb4333f570`. 5 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
 ## Target perf:scalar_arith_ir
 
-- Attempts: 3 (2 accepted, 1 rejected)
-- Best accepted effect: 5.24% (ratio 0.9476), episode `793797762f60`
-- Accepted effects: 5.24%, 2.94%
+- Attempts: 4 (3 accepted, 1 rejected)
+- Best accepted effect: 44.19% (ratio 0.5581), episode `5c80d802b931`
+- Accepted effects: 44.19%, 5.24%, 2.94%
 - Why candidates failed: stale_conflict (1)
 - Files changed by accepted candidates: `secp256r1/src/scalar.rs`
 - Files changed by rejected candidates: `secp256r1/src/scalar.rs`
-- Median model spend per attempt: 0.4000 USD (over 3 attempts with a recorded cost)
+- Median model spend per attempt: 0.3974 USD (over 4 attempts with a recorded cost)
 
 ## Target perf:field_arith_ir
 
@@ -24,6 +24,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> Tried: Scalar::invert in secp256r1/src/scalar.rs did Fermat exponentiation to n-2. That is roughly 256 Montgomery squarings plus about 30 multiplications. I replaced it with a binary extended Euclidean inversion modulo n. The input leaves Montgomery form, goes through invert_canonical with new helpers shr1, half_mod and sub_mod, then gets multiplied by R2 to return. Three edits, 140 changed lines. The old exponent constants went away.
+> Happened: sandbox perf on scalar_arith_ir was accepted with identical outputs. scalar_arith_ir went from 846037853 to 472178047, ratio 0.5581. field_arith_ir went from 374732029 to 373891216, ratio 0.9978, so it was untouched. Guards ok. The candidate was submitted and revealed and is waiting on independent replays.
+> Believe: inversion dominated this benchmark, and the Fermat chain was the cost. The inverse is unique, so equivalence holds by construction. The binary loop is not constant time. That needs checking against how callers use invert.
+> Next: confirm whether any caller needs constant-time inversion. If one does, try a constant-time variant such as safegcd and measure it against 472178047.
+>
+> 2026-10-13, episode `5c80d802b931` (accepted)
 
 > I replaced FieldElement::invert in secp256r1/src/field.rs. The old code was a binary extended Euclidean inversion. It halved a cofactor mod p for every removed bit, compared u and v with a full subtraction, then subtracted again, and finished with a Montgomery multiply by R2. The new code is the almost Montgomery inverse (Kaliski). Cofactors are doubled instead of halved, so they need plain multi-bit shifts.
 > Evaluation 1 was rejected. field_arith_ir went from 385718017 to 456079202, ratio 1.1824. That first version was slower. Evaluation 3 was also rejected, at 389947867, ratio 1.0110. Evaluation 5 was accepted in sandbox at 373839991, ratio 0.9692. scalar_arith_ir stayed at ratio 1.0000. Outputs were identical in all three. The submission is 104 changed lines, queued for replay.
