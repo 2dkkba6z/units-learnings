@@ -1,6 +1,6 @@
 # Lessons: anza-cryptography
 
-Lineage `92e06c95a332dd6c8f4e2be5187040ee4f375f60217aaff81ae25fa3c0f8e5ca` on [https://github.com/anza-xyz/cryptography](https://github.com/anza-xyz/cryptography) at `3efe73c7395f735f073bd25162cdc2fb4333f570`. 59 published attempts.
+Lineage `92e06c95a332dd6c8f4e2be5187040ee4f375f60217aaff81ae25fa3c0f8e5ca` on [https://github.com/anza-xyz/cryptography](https://github.com/anza-xyz/cryptography) at `3efe73c7395f735f073bd25162cdc2fb4333f570`. 60 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
@@ -16,13 +16,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:decode_ir
 
-- Attempts: 20 (3 rejected, 9 accepted, 8 no candidate)
+- Attempts: 21 (3 rejected, 9 accepted, 9 no candidate)
 - Best accepted effect: 17.73% (ratio 0.8227), episode `d87452637ca1`
 - Accepted effects: 17.73%, 14.23%, 4.04%, 3.71%, 3.44%, 3.04%, 2.59%, 1.70%, 1.36%
 - Why candidates failed: stale (1), apply_conflict (1), stale_conflict (1)
 - Files changed by accepted candidates: `secp256r1/src/field.rs`
 - Files changed by rejected candidates: `secp256r1/src/field.rs`
-- Median model spend per attempt: 0.4895 USD (over 20 attempts with a recorded cost)
+- Median model spend per attempt: 0.4270 USD (over 21 attempts with a recorded cost)
 
 ## Target perf:msm_ir
 
@@ -37,6 +37,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I targeted decode_ir in the secp256r1 crate. I read secp256r1/src/field.rs around the sqrt and pow code and secp256r1/src/group.rs lines 110-165. Then I replaced lines 139-143 of group.rs, 5 lines with 10, on the point decode path.
+> The sandbox evaluation rejected it as no_improvement. decode_ir went from 100132414 to 100019328, ratio 0.9989, and the required ratio was 0.9900. scalar_mul_ir stayed at 227414957 and msm_ir at 150600370, both ratio 1.0000. Base and candidate both built, the outputs were identical, and the guard passed. The change did not help in any way that counts. I did not submit a candidate.
+> Decode cost is not in the code around group.rs lines 139-143. The field sqrt in field.rs is the likely bulk, since it is an exponentiation. Trimming the logic around that call barely moves the count.
+> Next I want to work on the sqrt exponentiation chain in field.rs directly, using a shorter addition chain or fewer squarings. After that, check whether decode calls the inversion or the residue check more than once.
+>
+> 2026-10-13, episode `f09d0d2306b0` (no candidate)
 
 > I tried one change in secp256r1/src/field.rs, lines 711-712. I routed montgomery_square_wide through reduce_step, the shift-based reduction that multiplication already uses, so squaring would stop using the mac-based reduction.
 > Build passed for base and candidate. Outputs were identical. It was slower on every metric. scalar_mul_ir went from 227351891 to 231550141, ratio 1.0185. msm_ir went from 148641174 to 151222076, ratio 1.0174. decode_ir went from 101368473 to 107226830, ratio 1.0578. The required ratio was 0.9900, so it was rejected. I reverted it and submitted nothing.
@@ -65,13 +72,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next, profile decode end to end before editing. Look at the sqrt exponentiation chain and the decompress path in group.rs.
 >
 > 2026-10-13, episode `c7f3bf02ad09` (no candidate)
-
-> Tried: in secp256r1/src/field.rs I routed montgomery_reduce and montgomery_reduce_words through a new montgomery_reduce_words_wide_shifted. Since -p^-1 = 1 mod 2^64, m = r_i, and the products by the modulus limbs become shifts: m<<32 and m>>32 added at limbs i+1 and i+2, plus the top term at 2^192.
-> Results: the first attempt was rejected on decode_ir. Ratio 1.0545, required 0.9900, so decode got slower. scalar_mul_ir 0.9911 and msm_ir 0.9862 were fine in that run. After the third edit (lines 738-740), evaluation 3 on msm_ir was accepted. msm_ir went 152285252 to 147615606, ratio 0.9693. scalar_mul_ir 0.9731, decode_ir 0.9967. Outputs identical, 48 lines changed. Submitted. It is queued and the replays have not run yet.
-> Belief: the shift form of the reduction helps the mul-heavy paths. decode is sensitive to how the reduction is wired, and the first version made it worse.
-> Next: profile decode separately, starting with the sqrt and decompress paths, and wait for the replay result.
->
-> 2026-10-13, episode `6419e9cb3520` (accepted)
 
 ## Licence
 

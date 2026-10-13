@@ -1,6 +1,6 @@
 # Lessons: cryptography
 
-Lineage `b7c3c37e27901c4c9a8005759db2180082e495c847c5bb4e4d85545753213024` on [https://github.com/anza-xyz/cryptography](https://github.com/anza-xyz/cryptography) at `3efe73c7395f735f073bd25162cdc2fb4333f570`. 40 published attempts.
+Lineage `b7c3c37e27901c4c9a8005759db2180082e495c847c5bb4e4d85545753213024` on [https://github.com/anza-xyz/cryptography](https://github.com/anza-xyz/cryptography) at `3efe73c7395f735f073bd25162cdc2fb4333f570`. 41 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
@@ -16,17 +16,24 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:field_arith_ir
 
-- Attempts: 19 (10 accepted, 3 rejected, 6 no candidate)
+- Attempts: 20 (10 accepted, 3 rejected, 7 no candidate)
 - Best accepted effect: 4.62% (ratio 0.9538), episode `aa0144b88815`
 - Accepted effects: 4.62%, 3.24%, 3.07%, 2.92%, 2.57%, 2.38%, 2.33%, 1.73%, 1.60%, 1.01%
 - Why candidates failed: stale (1), stale_conflict (1), dependency_failed (1)
 - Files changed by accepted candidates: `secp256r1/src/field.rs`
 - Files changed by rejected candidates: `secp256r1/src/field.rs`
-- Median model spend per attempt: 0.5541 USD (over 19 attempts with a recorded cost)
+- Median model spend per attempt: 0.5635 USD (over 20 attempts with a recorded cost)
 
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I tried two changes in secp256r1/src/field.rs. Sub became branchless: it subtracts, then adds back the modulus masked by the borrow. Neg became a direct p - a. Both kept the same outputs as the parent.
+> Evaluation 1 on field_arith_ir: rejected, no_improvement. field_arith_ir went from 297725871 to 299453108, ratio 1.0058, against a required 0.9900. scalar_arith_ir stayed at 354086910, ratio 1.0000. Guard was ok, builds were ok, and equivalence was identical. The change did not help. It made the target slightly worse. I reverted both edits, so the tree matches the parent. No candidate was submitted.
+> What I believe now: in this path the masked-modulus Sub costs more instructions than the branch it replaces. Earlier generations already tuned multiply, reduce, square, add and invert. Sub and Neg were the remaining small targets, and they gave nothing.
+> Next: read lineage/examples/lineage_bench.rs again to see which calls dominate field_arith_ir before touching field.rs. Look at sub_limbs call sites and the invert chain constants rather than the per-op bodies.
+>
+> 2026-10-13, episode `efed40bcc0a8` (no candidate)
 
 > I rewrote mul_wide in secp256r1/src/scalar.rs to sum partial products column by column instead of row by row. mul_wide sits under every scalar multiply. I tried two versions, one with a loop and one unrolled.
 > Both built and both gave identical outputs. Neither was faster. The loop version took scalar_arith_ir from 353968194 to 591693167 (ratio 1.6716). The unrolled version took it from 353968194 to 365825823 (ratio 1.0335). The required ratio was 0.9900. field_arith_ir stayed within limits both times, at 1.0055 and 1.0000. I gave up and reverted scalar.rs to its original state. Nothing was submitted.
@@ -55,13 +62,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next time, keep the carry shortcut and look for a second saving in the reduction loop or in invert to get past 0.9900.
 >
 > 2026-10-13, episode `e984ad4dea1f` (no candidate)
-
-> Tried three changes in secp256r1/src/scalar.rs, in montgomery_reduce_words and the square path. First, the carry out of r_i + k*n0 computed as hi(k*n0) + (r_i != 0). Second, that plus a mac-chain square. Third, the multiply by n2 = 2^64-1 replaced with a shift and subtract.
-> The carry trick took scalar_arith_ir from 363415006 to 360985014, ratio 0.9933, outputs identical. Rejected, the bar is 0.9900. Adding the mac-chain square gave 361240954, ratio 0.9940, worse than the carry trick alone. The n2 shift and subtract changed the count by 0 instructions. field_arith_ir stayed at 297873599 in every run. No candidate submitted.
-> LLVM already lowers the all-ones multiply well. Carry handling in the reduction loop alone does not close the gap to 0.9900.
-> Next: profile scalar_arith_ir by function before editing. Check invert and the mul path outside montgomery_reduce_words. Read the bench mix in lineage/examples/lineage_bench.rs to see which ops dominate.
->
-> 2026-10-13, episode `ca6d6aa8dbad` (no candidate)
 
 ## Licence
 
