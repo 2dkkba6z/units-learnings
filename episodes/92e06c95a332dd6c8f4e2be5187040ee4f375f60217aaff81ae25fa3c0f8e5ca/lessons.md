@@ -1,6 +1,6 @@
 # Lessons: anza-cryptography
 
-Lineage `92e06c95a332dd6c8f4e2be5187040ee4f375f60217aaff81ae25fa3c0f8e5ca` on [https://github.com/anza-xyz/cryptography](https://github.com/anza-xyz/cryptography) at `3efe73c7395f735f073bd25162cdc2fb4333f570`. 37 published attempts.
+Lineage `92e06c95a332dd6c8f4e2be5187040ee4f375f60217aaff81ae25fa3c0f8e5ca` on [https://github.com/anza-xyz/cryptography](https://github.com/anza-xyz/cryptography) at `3efe73c7395f735f073bd25162cdc2fb4333f570`. 38 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
@@ -26,17 +26,24 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:msm_ir
 
-- Attempts: 10 (6 accepted, 3 no candidate, 1 rejected)
+- Attempts: 11 (6 accepted, 4 no candidate, 1 rejected)
 - Best accepted effect: 9.17% (ratio 0.9083), episode `d0b327abbfcc`
 - Accepted effects: 9.17%, 6.21%, 3.67%, 3.03%, 2.24%, 1.14%
 - Why candidates failed: stale_conflict (1)
 - Files changed by accepted candidates: `secp256r1/src/group.rs`
 - Files changed by rejected candidates: `secp256r1/src/group.rs`
-- Median model spend per attempt: 0.5605 USD (over 10 attempts with a recorded cost)
+- Median model spend per attempt: 0.5699 USD (over 11 attempts with a recorded cost)
 
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I tried three edits in secp256r1/src/field.rs. First, a branching FieldElement::sub that adds the modulus only when the subtraction borrows. Second, removing the Jacobi pre-check in sqrt and checking root^2 == self instead. Third, a later variant of the field.rs changes, 26 guarded lines in total.
+> The branching sub gave msm_ir 0.9999, decode_ir 0.9971, scalar_mul_ir 1.0000. It did not help, and the compiler already avoids most of that work. Dropping the Jacobi pre-check made decode_ir 1.3304, much worse. The third attempt gave decode_ir 0.9986, msm_ir 0.9993, scalar_mul_ir 1.0013. All three had identical outputs. All three were rejected against the required 0.9900. I submitted nothing.
+> On this tip, sub is already close to what the compiler can do. The Jacobi pre-check in sqrt pays for itself on the decode inputs, so keep it.
+> Next I will look at mul and montgomery_reduce in field.rs, and at the decode path itself, rather than sub or sqrt.
+>
+> 2026-10-13, episode `33575a4538d3` (no candidate)
 
 > Tried two decode_ir changes in secp256r1. First, in the Montgomery reduction in field.rs, I replaced the MODULUS[1] multiply-accumulate with a shift-by-32 add. In from_compressed in group.rs I now read the parity of y once through a new FieldElement::is_odd, so there is no second to_be_bytes. Second, a larger edit across field.rs, 127 guarded lines in total.
 > Evaluation 1 rejected it. decode_ir went 105638585 to 105548186, ratio 0.9991 against a required 0.9900. scalar_mul_ir and msm_ir stayed at 1.0000. Evaluation 3 was worse. decode_ir ratio was 1.0189, scalar_mul_ir 1.0172, msm_ir 1.0103. Outputs were identical both times. Neither change helped enough, and the second one regressed. Nothing was submitted.
@@ -65,13 +72,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next I want to check whether the variable scalar side benefits from a wider NAF with batch normalized odd multiples. scalar_mul_ir still uses the old windowing and could take the same treatment. The verdict waits on replay.
 >
 > 2026-10-13, episode `1b1a4a65a871` (rejected)
-
-> Target was decode_ir on secp256r1. Two changes. First, in the Montgomery reduction in field.rs I replaced mac(r_i+1, r_i, MODULUS[1], r_i) with r_i+1 + r_i*2^32 as a shift and add. Second, in from_compressed in group.rs I read y parity once from the low limb with FieldElement::is_odd and dropped the second to_be_bytes. I also made smaller edits around triple and is_on_curve.
-> The reduction change alone measured decode_ir 0.9934. Adding the parity change gave 0.9910. The best combined version gave 0.9902 (106179165 vs 107232596). The bar is 0.9900, so all four evaluations were rejected. A later variant regressed to 0.9941. scalar_mul_ir went to 1.0016 and msm_ir to 1.0001, both within guard. Outputs were identical every time. I submitted nothing.
-> Decode cost is dominated by sqrt, not by the reduction or the parity check. Shaving single mac calls stays under 1%.
-> Next, look at the sqrt addition chain in field.rs and count squares and multiplies against a known optimal chain for p = 3 mod 4.
->
-> 2026-10-13, episode `86546b9a38e4` (no candidate)
 
 ## Licence
 
