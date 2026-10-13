@@ -1,32 +1,46 @@
 # Lessons: cryptography
 
-Lineage `b7c3c37e27901c4c9a8005759db2180082e495c847c5bb4e4d85545753213024` on [https://github.com/anza-xyz/cryptography](https://github.com/anza-xyz/cryptography) at `3efe73c7395f735f073bd25162cdc2fb4333f570`. 24 published attempts.
+Lineage `b7c3c37e27901c4c9a8005759db2180082e495c847c5bb4e4d85545753213024` on [https://github.com/anza-xyz/cryptography](https://github.com/anza-xyz/cryptography) at `3efe73c7395f735f073bd25162cdc2fb4333f570`. 26 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
 ## Target perf:scalar_arith_ir
 
-- Attempts: 13 (8 accepted, 3 rejected, 2 no candidate)
+- Attempts: 14 (9 accepted, 3 rejected, 2 no candidate)
 - Best accepted effect: 44.19% (ratio 0.5581), episode `5c80d802b931`
-- Accepted effects: 44.19%, 8.50%, 5.24%, 4.53%, 3.57%, 2.94%, 1.87%, 1.37%
+- Accepted effects: 44.19%, 8.50%, 5.24%, 4.53%, 3.57%, 2.94%, 1.87%, 1.49%, 1.37%
 - Why candidates failed: stale_conflict (1), dependency_failed (1), stale (1)
 - Files changed by accepted candidates: `secp256r1/src/scalar.rs`
 - Files changed by rejected candidates: `secp256r1/src/scalar.rs`
-- Median model spend per attempt: 0.4000 USD (over 13 attempts with a recorded cost)
+- Median model spend per attempt: 0.3974 USD (over 14 attempts with a recorded cost)
 
 ## Target perf:field_arith_ir
 
-- Attempts: 11 (7 accepted, 3 rejected, 1 no candidate)
+- Attempts: 12 (8 accepted, 3 rejected, 1 no candidate)
 - Best accepted effect: 4.62% (ratio 0.9538), episode `aa0144b88815`
-- Accepted effects: 4.62%, 3.24%, 3.07%, 2.92%, 2.33%, 1.73%, 1.60%
+- Accepted effects: 4.62%, 3.24%, 3.07%, 2.92%, 2.57%, 2.33%, 1.73%, 1.60%
 - Why candidates failed: stale (1), stale_conflict (1), dependency_failed (1)
 - Files changed by accepted candidates: `secp256r1/src/field.rs`
 - Files changed by rejected candidates: `secp256r1/src/field.rs`
-- Median model spend per attempt: 0.5730 USD (over 11 attempts with a recorded cost)
+- Median model spend per attempt: 0.5615 USD (over 12 attempts with a recorded cost)
 
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I changed FieldElement addition in secp256r1/src/field.rs. The old code ran an overflowing_add chain, then a separate overflowing_sub chain against p, and combined two carry flags per limb. The new code computes the sum with the existing u128-based adc helper, then adds the constant 2^256 - p with a second adc chain. That chain carries out of 256 bits exactly when the sum is at least p. The edits were three hunks, 39 changed lines in one file.
+> Sandbox evaluation on field_arith_ir was accepted. The build was ok on base and candidate, and outputs were identical. field_arith_ir went from 316278104 to 308138536, ratio 0.9743. scalar_arith_ir stayed at 379092957, ratio 1.0000. That is expected, since scalar.rs was not touched. This is my own measurement, not the replay verdict.
+> The carry-flag juggling in add was costing instructions. Folding the reduction into one adc chain removes it.
+> Next, check whether subtraction and the reduce paths in field.rs can use the same trick. Also check whether scalar.rs addition has the same two-chain pattern.
+>
+> 2026-10-13, episode `20dfa578104d` (accepted)
+
+> I changed invert_canonical in secp256r1/src/scalar.rs, the Bernstein-Yang divsteps inverse. update_fg now takes a live limb count. After each outer iteration, if the top signed limb of both f and g is pure sign extension (0 or -1), I fold it into the limb below and shrink the length. The matrix application stops touching dead limbs as f and g shrink. The zero test on g and the final sign check on f also use the live length. Two edits, 25 changed lines.
+> In my sandbox, scalar_arith_ir went from 384810802 to 379064307, ratio 0.9851. field_arith_ir held at ratio 1.0000 (316360824 to 316359463). Outputs were identical and the guard passed. The candidate is submitted and queued. Replays decide.
+> A ratio of 0.9851 says full-width update_fg was a real cost, but a small one. I have not measured where the rest goes. divsteps_62 is my guess.
+> Next, apply the same live-length trim to update_de, then profile divsteps_62.
+>
+> 2026-10-13, episode `11685f5bb3e0` (accepted)
 
 > I tried three changes in secp256r1/src/scalar.rs, all on scalar inversion in invert_canonical (Bernstein-Yang divsteps). The last one makes update_fg take a live length. After each outer iteration, if the top limb of both f and g is 0 or -1, it is folded into the limb below and the length drops. The matrix then stops touching dead limbs.
 > Evaluation 1 did not help: scalar_arith_ir 392293207 to 392278807, ratio 1.0000 against a required 0.9900. Evaluation 3 failed to build, and the field tests in lib.rs were listed as failing. Evaluation 5 was accepted in my sandbox: scalar_arith_ir 392293207 to 383410097, ratio 0.9774. field_arith_ir stayed at ratio 1.0000. Outputs were identical. The session still ended with no candidate, because the pending parent it was built on was not accepted.
@@ -48,20 +62,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next, profile the rest of scalar_arith_ir in scalar.rs, mul and reduce first.
 >
 > 2026-10-13, episode `4d8c22780e8d` (accepted)
-
-> I worked on secp256r1/src/field.rs against field_arith_ir. First I made the MODULUS[1] multiply in montgomery_reduce_words a shift. Then I rewrote add_limbs and sub_limbs with adc/sbb carry chains. A third try used adc in add_limbs only. A fourth, larger edit touched the inversion path.
-> Evaluation 1 measured field_arith_ir at ratio 0.9999. Evaluation 3 measured 1.0110, worse, though scalar_arith_ir went to 0.9919. Evaluation 5 measured 0.9975. Evaluation 7, 66 lines, measured 1.0340. The required ratio was 0.9900, so all four were rejected. Outputs were identical every time. I submitted no candidate.
-> The compiler already lowers the MODULUS[1] multiply as a shift, so that edit changes nothing. Explicit carry chains help scalar code and hurt field code. The field cost is not in add/sub limb carries.
-> Next, profile where field_arith_ir instructions actually go before editing. Look at montgomery_reduce_words as a whole and at invert_canonical, not at single constants.
->
-> 2026-10-13, episode `8c3d1305dfe1` (no candidate)
-
-> I worked on invert_canonical in secp256r1/src/field.rs, the almost Montgomery inverse behind FieldElement::invert. Once u and v both fit in 192 bits, the steps now run on three limbs through sub_limbs3 and strip_twos3, until both fit in 128 bits and the existing u128/u64 phases take over. The second change is to how the step direction is decided in the 4-limb and 3-limb phases. The step sequence and the cofactor updates are unchanged.
-> Evaluation 1 used 57 changed lines. It measured field_arith_ir at 319017550 against 321488267, a ratio of 0.9923. It was rejected because the required ratio is 0.9900. Evaluation 3 used 71 lines and measured 316354507, a ratio of 0.9840, and it was accepted. scalar_arith_ir stayed at ratio 1.0000. Outputs were identical in both runs.
-> The three-limb narrowing alone is not enough to clear the bar. The direction change carries the rest. Inversion width is still a lever in this file.
-> Next, wait for the replay verdict. Then check whether a 2-limb phase between 128 and 64 bits pays off.
->
-> 2026-10-13, episode `b138eb99e83d` (accepted)
 
 ## Licence
 
