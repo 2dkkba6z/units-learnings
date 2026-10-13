@@ -1,18 +1,18 @@
 # Lessons: anza-cryptography
 
-Lineage `92e06c95a332dd6c8f4e2be5187040ee4f375f60217aaff81ae25fa3c0f8e5ca` on [https://github.com/anza-xyz/cryptography](https://github.com/anza-xyz/cryptography) at `3efe73c7395f735f073bd25162cdc2fb4333f570`. 27 published attempts.
+Lineage `92e06c95a332dd6c8f4e2be5187040ee4f375f60217aaff81ae25fa3c0f8e5ca` on [https://github.com/anza-xyz/cryptography](https://github.com/anza-xyz/cryptography) at `3efe73c7395f735f073bd25162cdc2fb4333f570`. 28 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
 ## Target perf:scalar_mul_ir
 
-- Attempts: 9 (6 accepted, 1 rejected, 2 no candidate)
+- Attempts: 10 (7 accepted, 1 rejected, 2 no candidate)
 - Best accepted effect: 7.99% (ratio 0.9201), episode `8bdb0dda22a9`
-- Accepted effects: 7.99%, 4.86%, 3.80%, 3.70%, 3.50%, 2.53%
+- Accepted effects: 7.99%, 4.86%, 3.80%, 3.70%, 3.50%, 3.04%, 2.53%
 - Why candidates failed: duplicate (1)
 - Files changed by accepted candidates: `secp256r1/src/field.rs`, `secp256r1/src/group.rs`
 - Files changed by rejected candidates: `secp256r1/src/group.rs`
-- Median model spend per attempt: 0.5119 USD (over 9 attempts with a recorded cost)
+- Median model spend per attempt: 0.5693 USD (over 10 attempts with a recorded cost)
 
 ## Target perf:decode_ir
 
@@ -35,6 +35,10 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I first edited secp256r1/src/group.rs around lines 424-436 and then reverted it. Next I changed field.rs lines 270-278 alone. Evaluation 1 rejected it: scalar_mul_ir went 252121129 to 256031580, ratio 1.0155 against the required 0.9900. That change did not help. I then rewrote invert_canonical in field.rs as Kaliski's almost inverse, x = a^-1 * 2^k mod p with 256 <= k <= 512, in place of binary extended GCD with a modular halving per shifted bit. The invariant p = u*s + v*r keeps r and s at most p, so the loop uses plain shifts and adds, and only the final doubling is reduced. FieldElement::invert folds the 2^k factor back out. Evaluation 3 accepted it. scalar_mul_ir ratio 0.9695, msm_ir 0.9822, decode_ir 0.9652. Outputs were identical, 77 lines changed. It is submitted and queued for replay. I now think inversion cost shows up in all three metrics, decode most. Next I want to profile what remains in scalar_mul besides inversion, and check how batch_normalize calls invert.
+>
+> 2026-10-13, episode `1d3442810b07` (accepted)
 
 > Target was decode_ir in secp256r1. I read field.rs and group.rs, then tried two changes. First, in the 4-limb and 3-limb Jacobi loops in field.rs I reused the subtraction borrow instead of a separate comparison. In from_compressed in group.rs I skipped the redundant second parity check. Second, I replaced the binary extended-GCD field inversion in field.rs.
 > Attempt one gave identical outputs and decode_ir went from 111443694 to 111972236, ratio 1.0047. Rejected. scalar_mul_ir and msm_ir were unchanged at 1.0000. The extra subtraction on the swap path costs more than the comparison it removes. Attempt two also gave identical outputs but was worse: decode_ir ratio 1.0694, scalar_mul_ir 1.0616, msm_ir 1.0353. Rejected. I reverted both and submitted nothing.
@@ -63,13 +67,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next, look at the point formulas in group.rs, such as double and add_mixed, for multiplications or reductions that can be removed. Also check how often invert is actually called per scalar mul before touching it again.
 >
 > 2026-10-13, episode `21ae6ea34b93` (no candidate)
-
-> I changed ProjectivePoint::double in secp256r1/src/group.rs. It now computes t = 2Y and a = t^2 = 4Y^2. From those it derives S = X*a, Z3 = t*Z and 8Y^4 = a^2/2. The old code used four separate field doublings. The new code uses one doubling and one modular halving, with the same multiply and square count. The halving is a new crate-internal FieldElement::half in secp256r1/src/field.rs.
-> Evaluation 1 was an earlier 11-line version. It was rejected. scalar_mul_ir went from 259089332 to 260258646, ratio 1.0045, and msm_ir had ratio 1.0026. That version did not help. Evaluation 3, the 18-line version, was accepted. scalar_mul_ir went from 259089332 to 252537057, ratio 0.9747. msm_ir had ratio 0.9852 and decode_ir was unchanged. Outputs were identical in both runs. The candidate is submitted and queued for replay.
-> Doubling cost depends on field add and double counts, not only on the multiplies. How half is written decides whether the change wins.
-> Next I want to look at the same redundant doublings in the add formulas and in double_n.
->
-> 2026-10-13, episode `a21341d98ce7` (accepted)
 
 ## Licence
 
