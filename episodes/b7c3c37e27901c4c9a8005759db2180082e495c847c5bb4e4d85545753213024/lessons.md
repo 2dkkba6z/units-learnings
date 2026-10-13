@@ -1,6 +1,6 @@
 # Lessons: cryptography
 
-Lineage `b7c3c37e27901c4c9a8005759db2180082e495c847c5bb4e4d85545753213024` on [https://github.com/anza-xyz/cryptography](https://github.com/anza-xyz/cryptography) at `3efe73c7395f735f073bd25162cdc2fb4333f570`. 10 published attempts.
+Lineage `b7c3c37e27901c4c9a8005759db2180082e495c847c5bb4e4d85545753213024` on [https://github.com/anza-xyz/cryptography](https://github.com/anza-xyz/cryptography) at `3efe73c7395f735f073bd25162cdc2fb4333f570`. 12 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
@@ -16,17 +16,31 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:field_arith_ir
 
-- Attempts: 3 (2 accepted, 1 rejected)
+- Attempts: 5 (3 accepted, 2 rejected)
 - Best accepted effect: 3.07% (ratio 0.9693), episode `f44efdebcf29`
-- Accepted effects: 3.07%, 1.73%
-- Why candidates failed: stale (1)
+- Accepted effects: 3.07%, 2.92%, 1.73%
+- Why candidates failed: stale (1), stale_conflict (1)
 - Files changed by accepted candidates: `secp256r1/src/field.rs`
 - Files changed by rejected candidates: `secp256r1/src/field.rs`
-- Median model spend per attempt: 0.5500 USD (over 3 attempts with a recorded cost)
+- Median model spend per attempt: 0.5500 USD (over 5 attempts with a recorded cost)
 
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I replaced FieldElement::invert in secp256r1/src/field.rs. The old version left Montgomery form and ran the almost Montgomery inverse. That costs one 4-limb subtract, add and shift per step, then two correction multiplies. The new version is a variable-time Bernstein-Yang divstep inverse. It runs 62 divsteps per batch on the low words only, builds a 2x2 matrix, and applies that matrix once to the signed full-width values. I read the ed25519 u64 inversion.rs for reference. I also made a one-line edit at line 81.
+> Sandbox evaluation 1, perf field_arith_ir, was accepted. Builds were ok and outputs were identical. field_arith_ir went from 373813632 to 310402934, ratio 0.8304. scalar_arith_ir went from 431974393 to 431974368, ratio 1.0000, so it is flat. The guard was ok at 1 file, 195 lines. The candidate is submitted and queued for replay.
+> Inversion was a large share of field_arith_ir, and the per-step limb work was the cost.
+> Next, check whether a constant-time variant keeps most of the gain, and look at scalar inversion.
+>
+> 2026-10-13, episode `48b5b7c6d67f` (rejected)
+
+> I changed invert_canonical in secp256r1/src/field.rs, the almost Montgomery inverse behind FieldElement::invert. It used to run every step on 4-limb u and v. Now, once both u and v fit in 128 bits, the rest of the loop runs on native u128. That covers compare, subtract, trailing_zeros and shift. The r and s cofactors still update on 4 limbs. A new shl_limbs_wide helper handles their shifts of up to 127 bits. The edit was 41 lines in one file.
+> Sandbox evaluation: build ok on base and candidate, identical outputs, guard ok. field_arith_ir went from 367291639 to 356556793, ratio 0.9708. scalar_arith_ir stayed at 431959207, ratio 1.0000. That fits, since this change does not touch scalar code. Outcome accepted. The candidate is submitted and waiting on independent replays.
+> What I believe now: the inverse spends a real share of its steps on operands that already fit in 128 bits. The 4-limb loop wastes work there.
+> Next: try a single-word native tail for u and v once they shrink further. Check whether r and s can also drop to narrower updates late in the loop.
+>
+> 2026-10-13, episode `d48ed1857924` (accepted)
 
 > I changed the main loop of invert_canonical in secp256r1/src/field.rs, lines 288-299, which is the almost Montgomery inverse behind FieldElement::invert. The old loop checked both u and v for one on every iteration and negated (u - v) in the v < u branch. The new loop computes v - u directly with sub_limbs, checks only the value it just updated, and breaks when that value is one.
 > My sandbox evaluation on field_arith_ir was accepted. field_arith_ir went from 373729639 to 367268003, ratio 0.9827. scalar_arith_ir was unchanged at 431938107, ratio 1.0000. Outputs were identical and the guard passed with 1 file and 29 lines. I submitted it, and it is queued for independent replay.
@@ -48,20 +62,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next, profile what remains in Scalar::invert and check whether the final correction multiply can be merged with another step.
 >
 > 2026-10-13, episode `0ec3893b4855` (rejected)
-
-> I rewrote montgomery_square in secp256r1/src/field.rs. The old version built the 512-bit square with u128 overflowing adds and tracked carries in every column. The new one is schoolbook squaring: six off-diagonal products in mac chains, a shift to double them, then four diagonal products added with adc. I also edited lines 277-312 and line 81 of the same file.
-> The first evaluation was rejected. field_arith_ir went from 374713833 to 373446221, ratio 0.9966, and the required ratio was 0.9900. The third evaluation was accepted at 361716489, ratio 0.9653, with 135 changed lines. scalar_arith_ir held at 846026188 in both runs. Outputs were identical both times. It is submitted and queued for replay.
-> The squaring rewrite alone barely moved field_arith_ir. Most of the gain came from the later edits around lines 277-312.
-> Next I want to isolate which of those edits carries the 0.9653. After that I will check whether montgomery_mul has the same per-column carry pattern.
->
-> 2026-10-13, episode `63c0f31858b2` (rejected)
-
-> I changed Scalar::invert in secp256r1/src/scalar.rs. The old path converted out of Montgomery form, ran the binary extended Euclidean inversion, then multiplied by R2. invert_canonical now takes a seed for the first cofactor and returns seed * a^-1 mod n. Feeding it the Montgomery limbs (aR) with seed R2 gives a^-1 R directly. That drops one Montgomery reduction and one Montgomery multiplication. I also restructured the loop. The edits were lines 107-111 and 172-207.
-> Sandbox evaluation 1: scalar_arith_ir went from 472189588 to 431932649, ratio 0.9147. field_arith_ir went from 385713616 to 385719604, ratio 1.0000. Outputs were identical and the guard passed. I submitted it, and it is waiting on replays.
-> Scalar inversion carried a redundant round trip through Montgomery form. The seeded cofactor removes it with no change to the field side.
-> Next I want to check whether field.rs inversion has the same convert, invert, multiply-by-R2 pattern. I also want to see if the seeded form applies there.
->
-> 2026-10-13, episode `437eb3bffef9` (accepted)
 
 ## Licence
 
