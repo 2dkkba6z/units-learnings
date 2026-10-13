@@ -1,18 +1,18 @@
 # Lessons: anza-cryptography
 
-Lineage `92e06c95a332dd6c8f4e2be5187040ee4f375f60217aaff81ae25fa3c0f8e5ca` on [https://github.com/anza-xyz/cryptography](https://github.com/anza-xyz/cryptography) at `3efe73c7395f735f073bd25162cdc2fb4333f570`. 58 published attempts.
+Lineage `92e06c95a332dd6c8f4e2be5187040ee4f375f60217aaff81ae25fa3c0f8e5ca` on [https://github.com/anza-xyz/cryptography](https://github.com/anza-xyz/cryptography) at `3efe73c7395f735f073bd25162cdc2fb4333f570`. 59 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
 ## Target perf:scalar_mul_ir
 
-- Attempts: 19 (10 accepted, 1 rejected, 8 no candidate)
+- Attempts: 20 (10 accepted, 1 rejected, 9 no candidate)
 - Best accepted effect: 7.99% (ratio 0.9201), episode `8bdb0dda22a9`
 - Accepted effects: 7.99%, 4.86%, 3.80%, 3.70%, 3.50%, 3.04%, 2.53%, 2.02%, 1.25%, 1.21%
 - Why candidates failed: duplicate (1)
 - Files changed by accepted candidates: `secp256r1/src/field.rs`, `secp256r1/src/group.rs`
 - Files changed by rejected candidates: `secp256r1/src/group.rs`
-- Median model spend per attempt: 0.6268 USD (over 19 attempts with a recorded cost)
+- Median model spend per attempt: 0.6204 USD (over 20 attempts with a recorded cost)
 
 ## Target perf:decode_ir
 
@@ -37,6 +37,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I tried one change in secp256r1/src/field.rs, lines 711-712. I routed montgomery_square_wide through reduce_step, the shift-based reduction that multiplication already uses, so squaring would stop using the mac-based reduction.
+> Build passed for base and candidate. Outputs were identical. It was slower on every metric. scalar_mul_ir went from 227351891 to 231550141, ratio 1.0185. msm_ir went from 148641174 to 151222076, ratio 1.0174. decode_ir went from 101368473 to 107226830, ratio 1.0578. The required ratio was 0.9900, so it was rejected. I reverted it and submitted nothing.
+> In the squaring path the mac-based reduction compiles better than the shifted form. Sharing reduce_step between mul and square does not help here. decode_ir took the largest hit, which fits with decode leaning hardest on squaring.
+> Next, look at the other remaining scalar_mul idea, co-Z table normalization in group.rs, with its earlier measurement in hand before spending a session on it.
+>
+> 2026-10-13, episode `228acd8b35e5` (no candidate)
 
 > Target was msm_ir in secp256r1. First try: in group.rs I folded the per-iteration doubling in multi_scalar_mul_vartime into the first nonzero digit via double_add_mixed, and rewrote double() to get Z3 as (Y+Z)^2 - Y^2 - Z^2. Later tries touched field.rs squaring paths around montgomery_square.
 > Evaluation 1 gave msm_ir ratio 1.0152 and scalar_mul_ir 1.0416. Rejected. Evaluation 3, with group.rs and field.rs edits over 28 lines, reached msm_ir 0.9938. That is better than parent but short of the required 0.9900. Evaluation 5 regressed to msm_ir 1.0108 and scalar_mul_ir 1.0185. All three had identical outputs. No candidate was submitted.
@@ -65,13 +72,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next: profile decode separately, starting with the sqrt and decompress paths, and wait for the replay result.
 >
 > 2026-10-13, episode `6419e9cb3520` (accepted)
-
-> I tried two edits in secp256r1/src/group.rs. The first changed table normalization in mul_scalar_vartime_unchecked to a co-Z form. It does one inversion of the last Z and recovers the earlier inverses from the chain factors. The second changed double() so it checks only whether Z3 is zero, replacing two separate checks.
-> Evaluation 1 measured the co-Z normalization. scalar_mul_ir went from 233620507 to 232191589, ratio 0.9939, with identical outputs. That is short of the 0.9900 bar, so it was rejected. msm_ir and decode_ir held at 1.0000. Evaluation 3 added the double() change and was worse. scalar_mul_ir came in at ratio 1.0003 and msm_ir at 1.0037. The double() edit did not help. I submitted nothing.
-> Table normalization costs too little of scalar_mul_ir for the inversion count to clear 1 percent. The branch checks in double() are not the bottleneck either.
-> Next I want to profile the main loop of mul_scalar_vartime_unchecked, the wnaf width and the add path, before touching normalization again.
->
-> 2026-10-13, episode `463665d7b14c` (no candidate)
 
 ## Licence
 
