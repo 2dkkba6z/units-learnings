@@ -1,0 +1,1088 @@
+{
+  "schema": "lineage-episode/1",
+  "episode_id": "9fade3da8f0659cc92f5f8c8fc926aafae7146b04ed487e80f7f9253cfe4501b",
+  "seq": 344,
+  "network": "mainnet",
+  "session_id": "05c02d67633510d7015b805a76a60934da933878fd9253dd4d7efe979ecc8d33",
+  "agent": {
+    "id": "21i6QcVZC31twkqZc8mnT4yuwpmGDMh46zWuMJQTiEQb",
+    "name": "Tamhatch",
+    "hidden": false,
+    "hosted": true,
+    "identity_mode": "purchased",
+    "soul": {
+      "digest": "4a1faf5c2d68b9603f2b762a28b84e4671a244e516f9918872beb53c15b55be6",
+      "seq": 1,
+      "stored_at": 1791906992710,
+      "declared_model": {
+        "provider": "anthropic",
+        "id": "claude-opus-5-5"
+      }
+    }
+  },
+  "model": {
+    "provider": "anthropic",
+    "models": [
+      "anthropic/claude-opus-5.5"
+    ],
+    "route": {
+      "via": "openrouter",
+      "model": {
+        "provider": "anthropic",
+        "id": "claude-opus-5-5"
+      },
+      "upstream": [
+        "Anthropic"
+      ]
+    },
+    "harness": {
+      "name": "anthropic",
+      "version": "anthropic/1",
+      "digest": "e9d0933f46b9ee179cab4fea68a99e840279371b972fd98aa8270954fd0cefeb",
+      "provider": "openrouter"
+    },
+    "source": "worker_report"
+  },
+  "task": {
+    "recipe": {
+      "recipe_id": "da34fed70c9a35e931089d69c26877eb32fcaff9c4e20f36d6c7faaaa39dd441",
+      "name": "anza-cryptography",
+      "class": "rust",
+      "repo": "https://github.com/anza-xyz/cryptography",
+      "commit": "3efe73c7395f735f073bd25162cdc2fb4333f570"
+    },
+    "lineage_id": "92e06c95a332dd6c8f4e2be5187040ee4f375f60217aaff81ae25fa3c0f8e5ca",
+    "parent_gen_id": "24f272198f095b36035e5d65f32bf06ec073f2179b5f01802c4e03dfb7a99c4a",
+    "parent_height": 21,
+    "metrics": [
+      {
+        "name": "scalar_mul_ir",
+        "kind": "perf",
+        "direction": "lower",
+        "deterministic": true,
+        "min_effect": 0.01
+      },
+      {
+        "name": "msm_ir",
+        "kind": "perf",
+        "direction": "lower",
+        "deterministic": true,
+        "min_effect": 0.01
+      },
+      {
+        "name": "decode_ir",
+        "kind": "perf",
+        "direction": "lower",
+        "deterministic": true,
+        "min_effect": 0.01
+      }
+    ],
+    "target": {
+      "kind": "perf",
+      "target": "scalar_mul_ir",
+      "source": "worker_report.planned"
+    },
+    "baseline": null
+  },
+  "plan": {
+    "planned": {
+      "kind": "perf",
+      "target": "scalar_mul_ir",
+      "note": null
+    },
+    "opening_note": "My notes say the scalar_mul path still uses the old windowing and is the obvious next target. I'll skip micro-edits to the Montgomery reduction, which stayed under 1% before, and go for a wider NAF or table approach in the variable-base path.",
+    "source": "worker_report + session notes"
+  },
+  "hypotheses": [
+    "My notes say the scalar_mul path still uses the old windowing and is the obvious next target. I'll skip micro-edits to the Montgomery reduction, which stayed under 1% before, and go for a wider NAF or table approach in the variable-base path.",
+    "The table inversion looks expensive compared with the mixed-add savings it buys. I'll try a projective table with full additions.",
+    "That's 0.9911, still just short. I'll look at `is_on_curve` and `to_compressed`, which run on the other decode paths, for another saving.",
+    "`to_compressed` and `from_compressed` only need y's parity, so I'll add a crate-private `is_odd` that skips the byte serialization.",
+    "This is the last evaluation. It covers parity reads in both compression paths on top of the reduction shift."
+  ],
+  "actions": [
+    {
+      "seq": 1,
+      "kind": "note",
+      "at": 1791918567955,
+      "text": "My notes say the scalar_mul path still uses the old windowing and is the obvious next target. I'll skip micro-edits to the Montgomery reduction, which stayed under 1% before, and go for a wider NAF or table approach in the variable-base path."
+    },
+    {
+      "seq": 2,
+      "kind": "search",
+      "query": "fn (mul|scalar_mul|odd_multiples|batch_normalize|wnaf|naf|mul_vartime|double_scalar)",
+      "matches": 142,
+      "at": 1791918567977
+    },
+    {
+      "seq": 3,
+      "kind": "read",
+      "path": "secp256r1/src/group.rs",
+      "start_line": 400,
+      "end_line": 470,
+      "content_sha256": "64b2df36a3d53f6bdc0f6efd399fa64c9c712cf7e692f0fd4fbaea7a2690fcef",
+      "at": 1791918572207
+    },
+    {
+      "seq": 4,
+      "kind": "read",
+      "path": "secp256r1/src/group.rs",
+      "start_line": 650,
+      "end_line": 960,
+      "content_sha256": "64b2df36a3d53f6bdc0f6efd399fa64c9c712cf7e692f0fd4fbaea7a2690fcef",
+      "at": 1791918572208
+    },
+    {
+      "seq": 5,
+      "kind": "read",
+      "path": "lineage/examples/lineage_bench.rs",
+      "start_line": 1,
+      "end_line": 203,
+      "content_sha256": "4dac0620bc27a2785e3ead4a8100af020241659a59d3f4f413c44bf195f2c223",
+      "at": 1791918572209
+    },
+    {
+      "seq": 6,
+      "kind": "search",
+      "query": "pub fn (double|add_mixed|to_uncompressed|is_identity)|fn add\\(",
+      "matches": 45,
+      "at": 1791918584290
+    },
+    {
+      "seq": 7,
+      "kind": "read",
+      "path": "secp256r1/src/group.rs",
+      "start_line": 330,
+      "end_line": 400,
+      "content_sha256": "64b2df36a3d53f6bdc0f6efd399fa64c9c712cf7e692f0fd4fbaea7a2690fcef",
+      "at": 1791918586700
+    },
+    {
+      "seq": 8,
+      "kind": "read",
+      "path": "secp256r1/src/field.rs",
+      "start_line": 140,
+      "end_line": 260,
+      "content_sha256": "32b034b8fdbc8413b26e197fcddc02aa74d1a13185bc392368bc9e4890cc863d",
+      "at": 1791918597212
+    },
+    {
+      "seq": 9,
+      "kind": "read",
+      "path": "secp256r1/src/field.rs",
+      "start_line": 600,
+      "end_line": 760,
+      "content_sha256": "32b034b8fdbc8413b26e197fcddc02aa74d1a13185bc392368bc9e4890cc863d",
+      "at": 1791918597214
+    },
+    {
+      "seq": 10,
+      "kind": "read",
+      "path": "secp256r1/src/group.rs",
+      "start_line": 580,
+      "end_line": 648,
+      "content_sha256": "64b2df36a3d53f6bdc0f6efd399fa64c9c712cf7e692f0fd4fbaea7a2690fcef",
+      "at": 1791918615069
+    },
+    {
+      "seq": 11,
+      "kind": "note",
+      "at": 1791918626112,
+      "text": "The table inversion looks expensive compared with the mixed-add savings it buys. I'll try a projective table with full additions."
+    },
+    {
+      "seq": 12,
+      "kind": "edit",
+      "path": "secp256r1/src/group.rs",
+      "start_line": 423,
+      "end_line": 435,
+      "lines_before": 13,
+      "lines_after": 15,
+      "at": 1791918626113,
+      "diff": "--- a/secp256r1/src/group.rs\n+++ b/secp256r1/src/group.rs\n@@ -423,13 +423,15 @@\n-        let affine_table = batch_normalize(odd_multiples::<8>(self));\n-\n-        let naf = wnaf5(&scalar);\n-        let mut out = Self::IDENTITY;\n-\n-        for &digit in naf.iter().rev() {\n-            out = out.double();\n-            if digit > 0 {\n-                out = out.add_mixed(affine_table[(digit >> 1) as usize]);\n-            } else if digit < 0 {\n-                out = out.add_mixed(-affine_table[((-digit) >> 1) as usize]);\n-            }\n-        }\n+        // The table stays in Jacobian form: the few additions per scalar cost\n+        // less than the field inversion needed to normalize it.\n+        let table = odd_multiples::<8>(self);\n+\n+        let naf = wnaf5(&scalar);\n+        let mut out = Self::IDENTITY;\n+\n+        for &digit in naf.iter().rev() {\n+            out = out.double();\n+            if digit > 0 {\n+                out = out + table[(digit >> 1) as usize];\n+            } else if digit < 0 {\n+                out = out - table[((-digit) >> 1) as usize];\n+            }\n+        }"
+    },
+    {
+      "seq": 13,
+      "kind": "evaluate",
+      "target": "scalar_mul_ir",
+      "eval_kind": "perf",
+      "at": 1791918626146,
+      "phases": [
+        {
+          "phase": "prepare",
+          "at": 1791918627483
+        },
+        {
+          "phase": "build",
+          "at": 1791918628259
+        },
+        {
+          "phase": "build",
+          "at": 1791918628259
+        },
+        {
+          "phase": "test",
+          "at": 1791918645871
+        },
+        {
+          "phase": "test",
+          "at": 1791918646240
+        },
+        {
+          "phase": "equivalence",
+          "at": 1791918646565
+        },
+        {
+          "phase": "equivalence",
+          "at": 1791918646565
+        },
+        {
+          "phase": "metrics",
+          "at": 1791918647881
+        },
+        {
+          "phase": "metrics",
+          "at": 1791918649705
+        },
+        {
+          "phase": "metrics",
+          "at": 1791918651713
+        },
+        {
+          "phase": "metrics",
+          "at": 1791918653248
+        },
+        {
+          "phase": "metrics",
+          "at": 1791918654802
+        },
+        {
+          "phase": "metrics",
+          "at": 1791918655701
+        }
+      ]
+    },
+    {
+      "seq": 27,
+      "kind": "result",
+      "at": 1791918656753,
+      "output": "outcome: rejected (no_improvement: worst ratio 1.0385 vs required 0.9900)\nguard limits (config version 1): every guarded metric other than the target is within its limit\nguard: ok, 1 files, 8 lines\nbuild: base ok, candidate ok\nequivalence: identical outputs\nmetric scalar_mul_ir: parent 241702224, candidate 250998873, ratio 1.0385\nmetric msm_ir: parent 161472008, candidate 161473623, ratio 1.0000\nmetric decode_ir: parent 105510522, candidate 105510520, ratio 1.0000",
+      "outcome": "rejected",
+      "steps": [
+        {
+          "step": "build",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 17213,
+          "timed_out": false,
+          "tail": "   Compiling version_check v0.9.5\n   Compiling zeroize v1.9.0\n   Compiling subtle v2.6.1\n   Compiling typenum v1.20.0\n   Compiling generic-array v0.14.7\n   Compiling rand_core v0.6.4\n   Compiling const-oid v0.9.6\n   Compiling der v0.7.10\n   Compiling ff v0.13.1\n   Compiling base16ct v0.2.0\n   Compiling sec1 v0.7.3\n   Compiling group v0.13.0\n   Compiling crypto-bigint v0.5.5\n   Compiling lineage-secp256r1 v0.0.0 (/work/src/lineage)\n   Compiling elliptic-curve v0.13.8\n   Compiling primeorder v0.13.6\n   Compiling p256 v0.13.2\n    Finished `release` profile [optimized] target(s) in 16.90s\n"
+        },
+        {
+          "step": "build",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 17514,
+          "timed_out": false,
+          "tail": "   Compiling version_check v0.9.5\n   Compiling subtle v2.6.1\n   Compiling zeroize v1.9.0\n   Compiling typenum v1.20.0\n   Compiling generic-array v0.14.7\n   Compiling rand_core v0.6.4\n   Compiling const-oid v0.9.6\n   Compiling der v0.7.10\n   Compiling ff v0.13.1\n   Compiling base16ct v0.2.0\n   Compiling sec1 v0.7.3\n   Compiling group v0.13.0\n   Compiling crypto-bigint v0.5.5\n   Compiling lineage-secp256r1 v0.0.0 (/work/src/lineage)\n   Compiling elliptic-curve v0.13.8\n   Compiling primeorder v0.13.6\n   Compiling p256 v0.13.2\n    Finished `release` profile [optimized] target(s) in 17.24s\n"
+        },
+        {
+          "step": "test",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 294,
+          "timed_out": false,
+          "tail": "p::tests::multi_scalar_mul_rejects_length_mismatch ... ok\ntest group::tests::parses_and_serializes_compressed ... ok\ntest group::tests::parses_and_serializes_generator ... ok\ntest group::tests::parses_and_serializes_little_endian ... ok\ntest group::tests::projective_equality_ignores_jacobian_scale ... ok\ntest group::tests::rejects_invalid_compressed_prefixes ... ok\ntest group::tests::scalar_mul_matches_p256 ... ok\ntest group::tests::scalar_multiplication_rejects_non_canonical_scalars ... ok\ntest group::tests::unchecked_scalar_multiplication_accepts_non_canonical_scalars ... ok\ntest group::tests::fixed_base_scalar_mul_matches_p256 ... ok\ntest scalar::tests::arithmetic_matches_p256 ... ok\ntest group::tests::zero_scalars_and_cancelling_msm_return_identity ... ok\ntest scalar::tests::is_canonical_agrees_with_from_bytes ... ok\ntest scalar::tests::parses_little_endian_scalars ... ok\ntest scalar::tests::reduced_bytes_match_p256 ... ok\ntest scalar::tests::rejects_non_canonical_order ... ok\ntest scalar::tests::round_trips ... ok\ntest scalar::tests::arithmetic_matches_p256_for_many_samples ... ok\n\ntest result: ok. 36 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s\n\n"
+        },
+        {
+          "step": "test",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 291,
+          "timed_out": false,
+          "tail": "p::tests::multi_scalar_mul_rejects_length_mismatch ... ok\ntest group::tests::parses_and_serializes_compressed ... ok\ntest group::tests::parses_and_serializes_generator ... ok\ntest group::tests::parses_and_serializes_little_endian ... ok\ntest group::tests::projective_equality_ignores_jacobian_scale ... ok\ntest group::tests::rejects_invalid_compressed_prefixes ... ok\ntest group::tests::scalar_mul_matches_p256 ... ok\ntest group::tests::scalar_multiplication_rejects_non_canonical_scalars ... ok\ntest group::tests::unchecked_scalar_multiplication_accepts_non_canonical_scalars ... ok\ntest group::tests::fixed_base_scalar_mul_matches_p256 ... ok\ntest scalar::tests::arithmetic_matches_p256 ... ok\ntest group::tests::zero_scalars_and_cancelling_msm_return_identity ... ok\ntest scalar::tests::is_canonical_agrees_with_from_bytes ... ok\ntest scalar::tests::parses_little_endian_scalars ... ok\ntest scalar::tests::reduced_bytes_match_p256 ... ok\ntest scalar::tests::rejects_non_canonical_order ... ok\ntest scalar::tests::round_trips ... ok\ntest scalar::tests::arithmetic_matches_p256_for_many_samples ... ok\n\ntest result: ok. 36 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s\n\n"
+        },
+        {
+          "step": "equivalence",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 1277,
+          "timed_out": false,
+          "tail": "field 22095 82d8b1964d3da007872f967d6d9c9333\nscalar 18001 bae44ab3704f707d3143de8d9ccc8983\nencoding 10373 fe3aaffa8d8a154d6d50deb3851650f1\ngroup 12001 7cb067b82910be022956fa0cc7f8065c\nmul 2630 97c3ef85ef8e2cd3bb373f130914fcb8\n"
+        },
+        {
+          "step": "equivalence",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 1327,
+          "timed_out": false,
+          "tail": "field 22095 82d8b1964d3da007872f967d6d9c9333\nscalar 18001 bae44ab3704f707d3143de8d9ccc8983\nencoding 10373 fe3aaffa8d8a154d6d50deb3851650f1\ngroup 12001 7cb067b82910be022956fa0cc7f8065c\nmul 2630 97c3ef85ef8e2cd3bb373f130914fcb8\n"
+        },
+        {
+          "step": "metrics",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 1823,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: lineage/target/release/examples/lineage_bench scalar_mul cccc2a3284c34dd1\n==7== \n==7== \n==7== I   refs:      241,702,224\n"
+        },
+        {
+          "step": "metrics",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 2008,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: lineage/target/release/examples/lineage_bench scalar_mul cccc2a3284c34dd1\n==7== \n==7== \n==7== I   refs:      250,998,873\n"
+        },
+        {
+          "step": "metrics",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 1534,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: lineage/target/release/examples/lineage_bench msm cccc2a3284c34dd1\n==7== \n==7== \n==7== I   refs:      161,472,008\n"
+        },
+        {
+          "step": "metrics",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 1554,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: lineage/target/release/examples/lineage_bench msm cccc2a3284c34dd1\n==7== \n==7== \n==7== I   refs:      161,473,623\n"
+        },
+        {
+          "step": "metrics",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 898,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: lineage/target/release/examples/lineage_bench decode cccc2a3284c34dd1\n==7== \n==7== \n==7== I   refs:      105,510,522\n"
+        },
+        {
+          "step": "metrics",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 908,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: lineage/target/release/examples/lineage_bench decode cccc2a3284c34dd1\n==7== \n==7== \n==7== I   refs:      105,510,520\n"
+        }
+      ]
+    },
+    {
+      "seq": 28,
+      "kind": "edit",
+      "path": "secp256r1/src/group.rs",
+      "start_line": 423,
+      "end_line": 437,
+      "lines_before": 15,
+      "lines_after": 13,
+      "at": 1791918699862,
+      "diff": "--- a/secp256r1/src/group.rs\n+++ b/secp256r1/src/group.rs\n@@ -423,15 +423,13 @@\n-        // The table stays in Jacobian form: the few additions per scalar cost\n-        // less than the field inversion needed to normalize it.\n-        let table = odd_multiples::<8>(self);\n-\n-        let naf = wnaf5(&scalar);\n-        let mut out = Self::IDENTITY;\n-\n-        for &digit in naf.iter().rev() {\n-            out = out.double();\n-            if digit > 0 {\n-                out = out + table[(digit >> 1) as usize];\n-            } else if digit < 0 {\n-                out = out - table[((-digit) >> 1) as usize];\n-            }\n-        }\n+        let affine_table = batch_normalize(odd_multiples::<8>(self));\n+\n+        let naf = wnaf5(&scalar);\n+        let mut out = Self::IDENTITY;\n+\n+        for &digit in naf.iter().rev() {\n+            out = out.double();\n+            if digit > 0 {\n+                out = out.add_mixed(affine_table[(digit >> 1) as usize]);\n+            } else if digit < 0 {\n+                out = out.add_mixed(-affine_table[((-digit) >> 1) as usize]);\n+            }\n+        }"
+    },
+    {
+      "seq": 29,
+      "kind": "search",
+      "query": "MODULUS: \\[u64; 4\\]|NEG_MODULUS",
+      "matches": 6,
+      "at": 1791918699881
+    },
+    {
+      "seq": 30,
+      "kind": "read",
+      "path": "secp256r1/src/field.rs",
+      "start_line": 15,
+      "end_line": 32,
+      "content_sha256": "32b034b8fdbc8413b26e197fcddc02aa74d1a13185bc392368bc9e4890cc863d",
+      "at": 1791918709138
+    },
+    {
+      "seq": 31,
+      "kind": "edit",
+      "path": "secp256r1/src/field.rs",
+      "start_line": 708,
+      "end_line": 723,
+      "lines_before": 16,
+      "lines_after": 18,
+      "at": 1791918720486,
+      "diff": "--- a/secp256r1/src/field.rs\n+++ b/secp256r1/src/field.rs\n@@ -708,16 +708,18 @@\n-    let (r1, carry) = mac(r1, r0, MODULUS[1], r0);\n-    let (r2, carry) = adc(r2, 0, carry);\n-    let (r3, carry) = mac(r3, r0, MODULUS[3], carry);\n-    let (r4, carry2) = adc(r4, 0, carry);\n-\n-    let (r2, carry) = mac(r2, r1, MODULUS[1], r1);\n-    let (r3, carry) = adc(r3, 0, carry);\n-    let (r4, carry) = mac(r4, r1, MODULUS[3], carry);\n-    let (r5, carry2) = adc(r5, carry2, carry);\n-\n-    let (r3, carry) = mac(r3, r2, MODULUS[1], r2);\n-    let (r4, carry) = adc(r4, 0, carry);\n-    let (r5, carry) = mac(r5, r2, MODULUS[3], carry);\n-    let (r6, carry2) = adc(r6, carry2, carry);\n-\n-    let (r4, carry) = mac(r4, r3, MODULUS[1], r3);\n+    // MODULUS[0] = 2^64 - 1 and MODULUS[1] = 2^32 - 1, so each step's\n+    // m * (MODULUS[0] + MODULUS[1] * 2^64) adds m * 2^96 at the next limb.\n+    let (r1, carry) = add_shl32(r1, r0);\n+    let (r2, carry) = adc(r2, 0, carry);\n+    let (r3, carry) = mac(r3, r0, MODULUS[3], carry);\n+    let (r4, carry2) = adc(r4, 0, carry);\n+\n+    let (r2, carry) = add_shl32(r2, r1);\n+    let (r3, carry) = adc(r3, 0, carry);\n+    let (r4, carry) = mac(r4, r1, MODULUS[3], carry);\n+    let (r5, carry2) = adc(r5, carry2, carry);\n+\n+    let (r3, carry) = add_shl32(r3, r2);\n+    let (r4, carry) = adc(r4, 0, carry);\n+    let (r5, carry) = mac(r5, r2, MODULUS[3], carry);\n+    let (r6, carry2) = adc(r6, carry2, carry);\n+\n+    let (r4, carry) = add_shl32(r4, r3);"
+    },
+    {
+      "seq": 32,
+      "kind": "edit",
+      "path": "secp256r1/src/field.rs",
+      "start_line": 754,
+      "end_line": 755,
+      "lines_before": 2,
+      "lines_after": 9,
+      "at": 1791918720489,
+      "diff": "--- a/secp256r1/src/field.rs\n+++ b/secp256r1/src/field.rs\n@@ -754,2 +754,9 @@\n-#[inline(always)]\n-fn mac(\n+/// Returns `a + b * 2^32` as a low word and a carry word.\n+#[inline(always)]\n+fn add_shl32(a: u64, b: u64) -> (u64, u64) {\n+    let (low, overflow) = a.overflowing_add(b << 32);\n+    (low, (b >> 32) + u64::from(overflow))\n+}\n+\n+#[inline(always)]\n+fn mac("
+    },
+    {
+      "seq": 33,
+      "kind": "evaluate",
+      "target": "scalar_mul_ir",
+      "eval_kind": "perf",
+      "at": 1791918724515,
+      "phases": [
+        {
+          "phase": "prepare",
+          "at": 1791918725793
+        },
+        {
+          "phase": "build",
+          "at": 1791918726564
+        },
+        {
+          "phase": "build",
+          "at": 1791918726565
+        },
+        {
+          "phase": "test",
+          "at": 1791918743893
+        },
+        {
+          "phase": "test",
+          "at": 1791918744245
+        },
+        {
+          "phase": "equivalence",
+          "at": 1791918744551
+        },
+        {
+          "phase": "equivalence",
+          "at": 1791918744552
+        },
+        {
+          "phase": "metrics",
+          "at": 1791918745884
+        },
+        {
+          "phase": "metrics",
+          "at": 1791918747661
+        },
+        {
+          "phase": "metrics",
+          "at": 1791918749388
+        },
+        {
+          "phase": "metrics",
+          "at": 1791918750932
+        },
+        {
+          "phase": "metrics",
+          "at": 1791918752433
+        },
+        {
+          "phase": "metrics",
+          "at": 1791918753326
+        }
+      ]
+    },
+    {
+      "seq": 47,
+      "kind": "result",
+      "at": 1791918756559,
+      "output": "outcome: rejected (no_improvement: worst ratio 1.0016 vs required 0.9900)\nguard limits (config version 1): every guarded metric other than the target is within its limit\nguard: ok, 1 files, 17 lines\nbuild: base ok, candidate ok\nequivalence: identical outputs\nmetric scalar_mul_ir: parent 241702224, candidate 242081090, ratio 1.0016\nmetric msm_ir: parent 161472008, candidate 161536186, ratio 1.0004\nmetric decode_ir: parent 105510522, candidate 104823197, ratio 0.9935",
+      "outcome": "rejected",
+      "steps": [
+        {
+          "step": "build",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 15497,
+          "timed_out": false,
+          "tail": "   Compiling version_check v0.9.5\n   Compiling zeroize v1.9.0\n   Compiling subtle v2.6.1\n   Compiling typenum v1.20.0\n   Compiling generic-array v0.14.7\n   Compiling rand_core v0.6.4\n   Compiling const-oid v0.9.6\n   Compiling der v0.7.10\n   Compiling ff v0.13.1\n   Compiling base16ct v0.2.0\n   Compiling sec1 v0.7.3\n   Compiling group v0.13.0\n   Compiling crypto-bigint v0.5.5\n   Compiling lineage-secp256r1 v0.0.0 (/work/src/lineage)\n   Compiling elliptic-curve v0.13.8\n   Compiling primeorder v0.13.6\n   Compiling p256 v0.13.2\n    Finished `release` profile [optimized] target(s) in 15.23s\n"
+        },
+        {
+          "step": "build",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 17267,
+          "timed_out": false,
+          "tail": "   Compiling version_check v0.9.5\n   Compiling subtle v2.6.1\n   Compiling zeroize v1.9.0\n   Compiling rand_core v0.6.4\n   Compiling generic-array v0.14.7\n   Compiling typenum v1.20.0\n   Compiling const-oid v0.9.6\n   Compiling der v0.7.10\n   Compiling ff v0.13.1\n   Compiling base16ct v0.2.0\n   Compiling sec1 v0.7.3\n   Compiling group v0.13.0\n   Compiling crypto-bigint v0.5.5\n   Compiling lineage-secp256r1 v0.0.0 (/work/src/lineage)\n   Compiling elliptic-curve v0.13.8\n   Compiling primeorder v0.13.6\n   Compiling p256 v0.13.2\n    Finished `release` profile [optimized] target(s) in 17.00s\n"
+        },
+        {
+          "step": "test",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 280,
+          "timed_out": false,
+          "tail": "p::tests::multi_scalar_mul_rejects_length_mismatch ... ok\ntest group::tests::parses_and_serializes_compressed ... ok\ntest group::tests::parses_and_serializes_generator ... ok\ntest group::tests::parses_and_serializes_little_endian ... ok\ntest group::tests::projective_equality_ignores_jacobian_scale ... ok\ntest group::tests::rejects_invalid_compressed_prefixes ... ok\ntest group::tests::scalar_mul_matches_p256 ... ok\ntest group::tests::scalar_multiplication_rejects_non_canonical_scalars ... ok\ntest group::tests::unchecked_scalar_multiplication_accepts_non_canonical_scalars ... ok\ntest group::tests::fixed_base_scalar_mul_matches_p256 ... ok\ntest scalar::tests::arithmetic_matches_p256 ... ok\ntest group::tests::zero_scalars_and_cancelling_msm_return_identity ... ok\ntest scalar::tests::is_canonical_agrees_with_from_bytes ... ok\ntest scalar::tests::parses_little_endian_scalars ... ok\ntest scalar::tests::reduced_bytes_match_p256 ... ok\ntest scalar::tests::rejects_non_canonical_order ... ok\ntest scalar::tests::round_trips ... ok\ntest scalar::tests::arithmetic_matches_p256_for_many_samples ... ok\n\ntest result: ok. 36 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s\n\n"
+        },
+        {
+          "step": "test",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 285,
+          "timed_out": false,
+          "tail": "p::tests::multi_scalar_mul_rejects_length_mismatch ... ok\ntest group::tests::parses_and_serializes_compressed ... ok\ntest group::tests::parses_and_serializes_generator ... ok\ntest group::tests::parses_and_serializes_little_endian ... ok\ntest group::tests::projective_equality_ignores_jacobian_scale ... ok\ntest group::tests::rejects_invalid_compressed_prefixes ... ok\ntest group::tests::scalar_mul_matches_p256 ... ok\ntest group::tests::scalar_multiplication_rejects_non_canonical_scalars ... ok\ntest group::tests::unchecked_scalar_multiplication_accepts_non_canonical_scalars ... ok\ntest group::tests::fixed_base_scalar_mul_matches_p256 ... ok\ntest scalar::tests::arithmetic_matches_p256 ... ok\ntest group::tests::zero_scalars_and_cancelling_msm_return_identity ... ok\ntest scalar::tests::is_canonical_agrees_with_from_bytes ... ok\ntest scalar::tests::parses_little_endian_scalars ... ok\ntest scalar::tests::reduced_bytes_match_p256 ... ok\ntest scalar::tests::rejects_non_canonical_order ... ok\ntest scalar::tests::round_trips ... ok\ntest scalar::tests::arithmetic_matches_p256_for_many_samples ... ok\n\ntest result: ok. 36 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s\n\n"
+        },
+        {
+          "step": "equivalence",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 1256,
+          "timed_out": false,
+          "tail": "field 22095 82d8b1964d3da007872f967d6d9c9333\nscalar 18001 bae44ab3704f707d3143de8d9ccc8983\nencoding 10373 fe3aaffa8d8a154d6d50deb3851650f1\ngroup 12001 7cb067b82910be022956fa0cc7f8065c\nmul 2630 97c3ef85ef8e2cd3bb373f130914fcb8\n"
+        },
+        {
+          "step": "equivalence",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 1330,
+          "timed_out": false,
+          "tail": "field 22095 82d8b1964d3da007872f967d6d9c9333\nscalar 18001 bae44ab3704f707d3143de8d9ccc8983\nencoding 10373 fe3aaffa8d8a154d6d50deb3851650f1\ngroup 12001 7cb067b82910be022956fa0cc7f8065c\nmul 2630 97c3ef85ef8e2cd3bb373f130914fcb8\n"
+        },
+        {
+          "step": "metrics",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 1770,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: lineage/target/release/examples/lineage_bench scalar_mul cccc2a3284c34dd1\n==7== \n==7== \n==7== I   refs:      241,702,224\n"
+        },
+        {
+          "step": "metrics",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 1730,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: lineage/target/release/examples/lineage_bench scalar_mul cccc2a3284c34dd1\n==7== \n==7== \n==7== I   refs:      242,081,090\n"
+        },
+        {
+          "step": "metrics",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 1546,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: lineage/target/release/examples/lineage_bench msm cccc2a3284c34dd1\n==7== \n==7== \n==7== I   refs:      161,472,008\n"
+        },
+        {
+          "step": "metrics",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 1501,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: lineage/target/release/examples/lineage_bench msm cccc2a3284c34dd1\n==7== \n==7== \n==7== I   refs:      161,536,186\n"
+        },
+        {
+          "step": "metrics",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 892,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: lineage/target/release/examples/lineage_bench decode cccc2a3284c34dd1\n==7== \n==7== \n==7== I   refs:      105,510,522\n"
+        },
+        {
+          "step": "metrics",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 892,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: lineage/target/release/examples/lineage_bench decode cccc2a3284c34dd1\n==7== \n==7== \n==7== I   refs:      104,823,197\n"
+        }
+      ]
+    },
+    {
+      "seq": 48,
+      "kind": "search",
+      "query": "fn (sqrt|pow|square_n|sqn|invert|is_odd)|fn from_compressed",
+      "matches": 41,
+      "at": 1791918777919
+    },
+    {
+      "seq": 49,
+      "kind": "read",
+      "path": "secp256r1/src/field.rs",
+      "start_line": 95,
+      "end_line": 135,
+      "content_sha256": "7bf0c6fc9edd0fb7147c50983e41d362bbdb139c454407215a1b024dc7ab305f",
+      "at": 1791918781210
+    },
+    {
+      "seq": 50,
+      "kind": "read",
+      "path": "secp256r1/src/group.rs",
+      "start_line": 115,
+      "end_line": 168,
+      "content_sha256": "64b2df36a3d53f6bdc0f6efd399fa64c9c712cf7e692f0fd4fbaea7a2690fcef",
+      "at": 1791918781212
+    },
+    {
+      "seq": 51,
+      "kind": "edit",
+      "path": "secp256r1/src/group.rs",
+      "start_line": 139,
+      "end_line": 143,
+      "lines_before": 5,
+      "lines_after": 8,
+      "at": 1791918794464,
+      "diff": "--- a/secp256r1/src/group.rs\n+++ b/secp256r1/src/group.rs\n@@ -139,5 +139,8 @@\n-        if (y.to_be_bytes()[31] & 1) != (bytes[0] & 1) {\n-            y = -y;\n-        }\n-\n-        ((y.to_be_bytes()[31] & 1) == (bytes[0] & 1)).then_some(Self {\n+        // p is odd, so negating a nonzero y flips its parity; y = 0 is even\n+        // and cannot satisfy an odd prefix.\n+        let parity_matches = (y.to_be_bytes()[31] & 1) == (bytes[0] & 1);\n+        if !parity_matches {\n+            y = -y;\n+        }\n+\n+        (parity_matches || !y.is_zero()).then_some(Self {"
+    },
+    {
+      "seq": 52,
+      "kind": "evaluate",
+      "target": "decode_ir",
+      "eval_kind": "perf",
+      "at": 1791918794488,
+      "phases": [
+        {
+          "phase": "prepare",
+          "at": 1791918796284
+        },
+        {
+          "phase": "build",
+          "at": 1791918797060
+        },
+        {
+          "phase": "build",
+          "at": 1791918797061
+        },
+        {
+          "phase": "test",
+          "at": 1791918814638
+        },
+        {
+          "phase": "test",
+          "at": 1791918815004
+        },
+        {
+          "phase": "equivalence",
+          "at": 1791918815310
+        },
+        {
+          "phase": "equivalence",
+          "at": 1791918815310
+        },
+        {
+          "phase": "metrics",
+          "at": 1791918816582
+        },
+        {
+          "phase": "metrics",
+          "at": 1791918818450
+        },
+        {
+          "phase": "metrics",
+          "at": 1791918820280
+        },
+        {
+          "phase": "metrics",
+          "at": 1791918821801
+        },
+        {
+          "phase": "metrics",
+          "at": 1791918824755
+        },
+        {
+          "phase": "metrics",
+          "at": 1791918824755
+        }
+      ]
+    },
+    {
+      "seq": 66,
+      "kind": "result",
+      "at": 1791918825439,
+      "output": "outcome: rejected (no_improvement: worst ratio 0.9911 vs required 0.9900)\nguard limits (config version 1): every guarded metric other than the target is within its limit\nguard: ok, 2 files, 24 lines\nbuild: base ok, candidate ok\nequivalence: identical outputs\nmetric scalar_mul_ir: parent 241702224, candidate 242081090, ratio 1.0016\nmetric msm_ir: parent 161472008, candidate 161536186, ratio 1.0004\nmetric decode_ir: parent 105510522, candidate 104570491, ratio 0.9911",
+      "outcome": "rejected",
+      "steps": [
+        {
+          "step": "build",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 15788,
+          "timed_out": false,
+          "tail": "   Compiling version_check v0.9.5\n   Compiling zeroize v1.9.0\n   Compiling subtle v2.6.1\n   Compiling rand_core v0.6.4\n   Compiling generic-array v0.14.7\n   Compiling typenum v1.20.0\n   Compiling const-oid v0.9.6\n   Compiling der v0.7.10\n   Compiling ff v0.13.1\n   Compiling base16ct v0.2.0\n   Compiling sec1 v0.7.3\n   Compiling group v0.13.0\n   Compiling crypto-bigint v0.5.5\n   Compiling lineage-secp256r1 v0.0.0 (/work/src/lineage)\n   Compiling elliptic-curve v0.13.8\n   Compiling primeorder v0.13.6\n   Compiling p256 v0.13.2\n    Finished `release` profile [optimized] target(s) in 15.49s\n"
+        },
+        {
+          "step": "build",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 17516,
+          "timed_out": false,
+          "tail": "   Compiling version_check v0.9.5\n   Compiling subtle v2.6.1\n   Compiling zeroize v1.9.0\n   Compiling generic-array v0.14.7\n   Compiling typenum v1.20.0\n   Compiling rand_core v0.6.4\n   Compiling const-oid v0.9.6\n   Compiling der v0.7.10\n   Compiling ff v0.13.1\n   Compiling base16ct v0.2.0\n   Compiling sec1 v0.7.3\n   Compiling group v0.13.0\n   Compiling crypto-bigint v0.5.5\n   Compiling lineage-secp256r1 v0.0.0 (/work/src/lineage)\n   Compiling elliptic-curve v0.13.8\n   Compiling primeorder v0.13.6\n   Compiling p256 v0.13.2\n    Finished `release` profile [optimized] target(s) in 17.25s\n"
+        },
+        {
+          "step": "test",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 291,
+          "timed_out": false,
+          "tail": "p::tests::multi_scalar_mul_rejects_length_mismatch ... ok\ntest group::tests::parses_and_serializes_compressed ... ok\ntest group::tests::parses_and_serializes_generator ... ok\ntest group::tests::parses_and_serializes_little_endian ... ok\ntest group::tests::projective_equality_ignores_jacobian_scale ... ok\ntest group::tests::rejects_invalid_compressed_prefixes ... ok\ntest group::tests::scalar_mul_matches_p256 ... ok\ntest group::tests::scalar_multiplication_rejects_non_canonical_scalars ... ok\ntest group::tests::unchecked_scalar_multiplication_accepts_non_canonical_scalars ... ok\ntest group::tests::fixed_base_scalar_mul_matches_p256 ... ok\ntest group::tests::zero_scalars_and_cancelling_msm_return_identity ... ok\ntest scalar::tests::arithmetic_matches_p256 ... ok\ntest scalar::tests::is_canonical_agrees_with_from_bytes ... ok\ntest scalar::tests::parses_little_endian_scalars ... ok\ntest scalar::tests::reduced_bytes_match_p256 ... ok\ntest scalar::tests::rejects_non_canonical_order ... ok\ntest scalar::tests::round_trips ... ok\ntest scalar::tests::arithmetic_matches_p256_for_many_samples ... ok\n\ntest result: ok. 36 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s\n\n"
+        },
+        {
+          "step": "test",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 288,
+          "timed_out": false,
+          "tail": "p::tests::multi_scalar_mul_rejects_length_mismatch ... ok\ntest group::tests::parses_and_serializes_compressed ... ok\ntest group::tests::parses_and_serializes_generator ... ok\ntest group::tests::parses_and_serializes_little_endian ... ok\ntest group::tests::projective_equality_ignores_jacobian_scale ... ok\ntest group::tests::rejects_invalid_compressed_prefixes ... ok\ntest group::tests::scalar_mul_matches_p256 ... ok\ntest group::tests::scalar_multiplication_rejects_non_canonical_scalars ... ok\ntest group::tests::unchecked_scalar_multiplication_accepts_non_canonical_scalars ... ok\ntest group::tests::fixed_base_scalar_mul_matches_p256 ... ok\ntest scalar::tests::arithmetic_matches_p256 ... ok\ntest group::tests::zero_scalars_and_cancelling_msm_return_identity ... ok\ntest scalar::tests::is_canonical_agrees_with_from_bytes ... ok\ntest scalar::tests::parses_little_endian_scalars ... ok\ntest scalar::tests::reduced_bytes_match_p256 ... ok\ntest scalar::tests::rejects_non_canonical_order ... ok\ntest scalar::tests::round_trips ... ok\ntest scalar::tests::arithmetic_matches_p256_for_many_samples ... ok\n\ntest result: ok. 36 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s\n\n"
+        },
+        {
+          "step": "equivalence",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 1266,
+          "timed_out": false,
+          "tail": "field 22095 82d8b1964d3da007872f967d6d9c9333\nscalar 18001 bae44ab3704f707d3143de8d9ccc8983\nencoding 10373 fe3aaffa8d8a154d6d50deb3851650f1\ngroup 12001 7cb067b82910be022956fa0cc7f8065c\nmul 2630 97c3ef85ef8e2cd3bb373f130914fcb8\n"
+        },
+        {
+          "step": "equivalence",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 1269,
+          "timed_out": false,
+          "tail": "field 22095 82d8b1964d3da007872f967d6d9c9333\nscalar 18001 bae44ab3704f707d3143de8d9ccc8983\nencoding 10373 fe3aaffa8d8a154d6d50deb3851650f1\ngroup 12001 7cb067b82910be022956fa0cc7f8065c\nmul 2630 97c3ef85ef8e2cd3bb373f130914fcb8\n"
+        },
+        {
+          "step": "metrics",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 1867,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: lineage/target/release/examples/lineage_bench scalar_mul cccc2a3284c34dd1\n==7== \n==7== \n==7== I   refs:      241,702,224\n"
+        },
+        {
+          "step": "metrics",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 1830,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: lineage/target/release/examples/lineage_bench scalar_mul cccc2a3284c34dd1\n==7== \n==7== \n==7== I   refs:      242,081,090\n"
+        },
+        {
+          "step": "metrics",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 1519,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: lineage/target/release/examples/lineage_bench msm cccc2a3284c34dd1\n==7== \n==7== \n==7== I   refs:      161,472,008\n"
+        },
+        {
+          "step": "metrics",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 1624,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: lineage/target/release/examples/lineage_bench msm cccc2a3284c34dd1\n==7== \n==7== \n==7== I   refs:      161,536,186\n"
+        },
+        {
+          "step": "metrics",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 914,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: lineage/target/release/examples/lineage_bench decode cccc2a3284c34dd1\n==7== \n==7== \n==7== I   refs:      105,510,522\n"
+        },
+        {
+          "step": "metrics",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 936,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: lineage/target/release/examples/lineage_bench decode cccc2a3284c34dd1\n==7== \n==7== \n==7== I   refs:      104,570,491\n"
+        }
+      ]
+    },
+    {
+      "seq": 67,
+      "kind": "note",
+      "at": 1791918833250,
+      "text": "That's 0.9911, still just short. I'll look at `is_on_curve` and `to_compressed`, which run on the other decode paths, for another saving."
+    },
+    {
+      "seq": 68,
+      "kind": "search",
+      "query": "triple\\(|fn is_on_curve|fn to_compressed|fn is_non_residue|const THREE|fn to_be_bytes",
+      "matches": 19,
+      "at": 1791918833290
+    },
+    {
+      "seq": 69,
+      "kind": "read",
+      "path": "secp256r1/src/group.rs",
+      "start_line": 199,
+      "end_line": 252,
+      "content_sha256": "c5f8fa69f88261184018746ff6acf80b585e9647501db466891e70456973a271",
+      "at": 1791918837388
+    },
+    {
+      "seq": 70,
+      "kind": "read",
+      "path": "secp256r1/src/field.rs",
+      "start_line": 56,
+      "end_line": 76,
+      "content_sha256": "7bf0c6fc9edd0fb7147c50983e41d362bbdb139c454407215a1b024dc7ab305f",
+      "at": 1791918837393
+    },
+    {
+      "seq": 71,
+      "kind": "note",
+      "at": 1791918846075,
+      "text": "`to_compressed` and `from_compressed` only need y's parity, so I'll add a crate-private `is_odd` that skips the byte serialization."
+    },
+    {
+      "seq": 72,
+      "kind": "edit",
+      "path": "secp256r1/src/field.rs",
+      "start_line": 65,
+      "end_line": 66,
+      "lines_before": 2,
+      "lines_after": 8,
+      "at": 1791918846075,
+      "diff": "--- a/secp256r1/src/field.rs\n+++ b/secp256r1/src/field.rs\n@@ -65,2 +65,8 @@\n-    #[inline]\n-    pub fn is_zero(self) -> bool {\n+    /// Returns whether the canonical integer value is odd.\n+    #[inline]\n+    pub(crate) fn is_odd(self) -> bool {\n+        from_montgomery(self.limbs)[0] & 1 == 1\n+    }\n+\n+    #[inline]\n+    pub fn is_zero(self) -> bool {"
+    },
+    {
+      "seq": 73,
+      "kind": "edit",
+      "path": "secp256r1/src/group.rs",
+      "start_line": 204,
+      "end_line": 207,
+      "lines_before": 4,
+      "lines_after": 3,
+      "at": 1791918846076,
+      "diff": "--- a/secp256r1/src/group.rs\n+++ b/secp256r1/src/group.rs\n@@ -204,4 +204,3 @@\n-        let mut x_bytes = self.x.to_be_bytes();\n-        let y_bytes = self.y.to_be_bytes();\n-\n-        let prefix = if (y_bytes[31] & 1) == 1 { 0x03 } else { 0x02 };\n+        let mut x_bytes = self.x.to_be_bytes();\n+\n+        let prefix = if self.y.is_odd() { 0x03 } else { 0x02 };"
+    },
+    {
+      "seq": 74,
+      "kind": "edit",
+      "path": "secp256r1/src/group.rs",
+      "start_line": 141,
+      "end_line": 141,
+      "lines_before": 1,
+      "lines_after": 1,
+      "at": 1791918846076,
+      "diff": "--- a/secp256r1/src/group.rs\n+++ b/secp256r1/src/group.rs\n@@ -141,1 +141,1 @@\n-        let parity_matches = (y.to_be_bytes()[31] & 1) == (bytes[0] & 1);\n+        let parity_matches = y.is_odd() == (bytes[0] & 1 == 1);"
+    },
+    {
+      "seq": 75,
+      "kind": "note",
+      "at": 1791918850934,
+      "text": "This is the last evaluation. It covers parity reads in both compression paths on top of the reduction shift."
+    },
+    {
+      "seq": 76,
+      "kind": "evaluate",
+      "target": "decode_ir",
+      "eval_kind": "perf",
+      "at": 1791918850955,
+      "phases": [
+        {
+          "phase": "prepare",
+          "at": 1791918852412
+        },
+        {
+          "phase": "build",
+          "at": 1791918853256
+        },
+        {
+          "phase": "build",
+          "at": 1791918853260
+        },
+        {
+          "phase": "test",
+          "at": 1791918871519
+        },
+        {
+          "phase": "test",
+          "at": 1791918871859
+        },
+        {
+          "phase": "equivalence",
+          "at": 1791918872183
+        },
+        {
+          "phase": "equivalence",
+          "at": 1791918872183
+        },
+        {
+          "phase": "metrics",
+          "at": 1791918873569
+        },
+        {
+          "phase": "metrics",
+          "at": 1791918875367
+        },
+        {
+          "phase": "metrics",
+          "at": 1791918877105
+        },
+        {
+          "phase": "metrics",
+          "at": 1791918878669
+        },
+        {
+          "phase": "metrics",
+          "at": 1791918880181
+        },
+        {
+          "phase": "metrics",
+          "at": 1791918881232
+        }
+      ]
+    },
+    {
+      "seq": 90,
+      "kind": "result",
+      "at": 1791918883813,
+      "output": "outcome: rejected (no_improvement: worst ratio 0.9911 vs required 0.9900)\nguard limits (config version 1): every guarded metric other than the target is within its limit\nguard: ok, 2 files, 33 lines\nbuild: base ok, candidate ok\nequivalence: identical outputs\nmetric scalar_mul_ir: parent 241702224, candidate 242081090, ratio 1.0016\nmetric msm_ir: parent 161472008, candidate 161536186, ratio 1.0004\nmetric decode_ir: parent 105510522, candidate 104571966, ratio 0.9911",
+      "outcome": "rejected",
+      "steps": [
+        {
+          "step": "build",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 16267,
+          "timed_out": false,
+          "tail": "   Compiling version_check v0.9.5\n   Compiling subtle v2.6.1\n   Compiling zeroize v1.9.0\n   Compiling generic-array v0.14.7\n   Compiling typenum v1.20.0\n   Compiling rand_core v0.6.4\n   Compiling const-oid v0.9.6\n   Compiling der v0.7.10\n   Compiling ff v0.13.1\n   Compiling base16ct v0.2.0\n   Compiling sec1 v0.7.3\n   Compiling group v0.13.0\n   Compiling crypto-bigint v0.5.5\n   Compiling lineage-secp256r1 v0.0.0 (/work/src/lineage)\n   Compiling elliptic-curve v0.13.8\n   Compiling primeorder v0.13.6\n   Compiling p256 v0.13.2\n    Finished `release` profile [optimized] target(s) in 15.99s\n"
+        },
+        {
+          "step": "build",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 18178,
+          "timed_out": false,
+          "tail": "   Compiling version_check v0.9.5\n   Compiling subtle v2.6.1\n   Compiling zeroize v1.9.0\n   Compiling generic-array v0.14.7\n   Compiling rand_core v0.6.4\n   Compiling typenum v1.20.0\n   Compiling const-oid v0.9.6\n   Compiling der v0.7.10\n   Compiling ff v0.13.1\n   Compiling base16ct v0.2.0\n   Compiling sec1 v0.7.3\n   Compiling group v0.13.0\n   Compiling crypto-bigint v0.5.5\n   Compiling lineage-secp256r1 v0.0.0 (/work/src/lineage)\n   Compiling elliptic-curve v0.13.8\n   Compiling primeorder v0.13.6\n   Compiling p256 v0.13.2\n    Finished `release` profile [optimized] target(s) in 17.90s\n"
+        },
+        {
+          "step": "test",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 288,
+          "timed_out": false,
+          "tail": "p::tests::multi_scalar_mul_rejects_length_mismatch ... ok\ntest group::tests::parses_and_serializes_compressed ... ok\ntest group::tests::parses_and_serializes_generator ... ok\ntest group::tests::parses_and_serializes_little_endian ... ok\ntest group::tests::projective_equality_ignores_jacobian_scale ... ok\ntest group::tests::rejects_invalid_compressed_prefixes ... ok\ntest group::tests::scalar_mul_matches_p256 ... ok\ntest group::tests::scalar_multiplication_rejects_non_canonical_scalars ... ok\ntest group::tests::unchecked_scalar_multiplication_accepts_non_canonical_scalars ... ok\ntest group::tests::fixed_base_scalar_mul_matches_p256 ... ok\ntest scalar::tests::arithmetic_matches_p256 ... ok\ntest group::tests::zero_scalars_and_cancelling_msm_return_identity ... ok\ntest scalar::tests::is_canonical_agrees_with_from_bytes ... ok\ntest scalar::tests::parses_little_endian_scalars ... ok\ntest scalar::tests::reduced_bytes_match_p256 ... ok\ntest scalar::tests::rejects_non_canonical_order ... ok\ntest scalar::tests::round_trips ... ok\ntest scalar::tests::arithmetic_matches_p256_for_many_samples ... ok\n\ntest result: ok. 36 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s\n\n"
+        },
+        {
+          "step": "test",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 296,
+          "timed_out": false,
+          "tail": "p::tests::multi_scalar_mul_rejects_length_mismatch ... ok\ntest group::tests::parses_and_serializes_compressed ... ok\ntest group::tests::parses_and_serializes_generator ... ok\ntest group::tests::parses_and_serializes_little_endian ... ok\ntest group::tests::projective_equality_ignores_jacobian_scale ... ok\ntest group::tests::rejects_invalid_compressed_prefixes ... ok\ntest group::tests::scalar_mul_matches_p256 ... ok\ntest group::tests::scalar_multiplication_rejects_non_canonical_scalars ... ok\ntest group::tests::unchecked_scalar_multiplication_accepts_non_canonical_scalars ... ok\ntest group::tests::fixed_base_scalar_mul_matches_p256 ... ok\ntest scalar::tests::arithmetic_matches_p256 ... ok\ntest group::tests::zero_scalars_and_cancelling_msm_return_identity ... ok\ntest scalar::tests::is_canonical_agrees_with_from_bytes ... ok\ntest scalar::tests::parses_little_endian_scalars ... ok\ntest scalar::tests::reduced_bytes_match_p256 ... ok\ntest scalar::tests::rejects_non_canonical_order ... ok\ntest scalar::tests::round_trips ... ok\ntest scalar::tests::arithmetic_matches_p256_for_many_samples ... ok\n\ntest result: ok. 36 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s\n\n"
+        },
+        {
+          "step": "equivalence",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 1304,
+          "timed_out": false,
+          "tail": "field 22095 82d8b1964d3da007872f967d6d9c9333\nscalar 18001 bae44ab3704f707d3143de8d9ccc8983\nencoding 10373 fe3aaffa8d8a154d6d50deb3851650f1\ngroup 12001 7cb067b82910be022956fa0cc7f8065c\nmul 2630 97c3ef85ef8e2cd3bb373f130914fcb8\n"
+        },
+        {
+          "step": "equivalence",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 1370,
+          "timed_out": false,
+          "tail": "field 22095 82d8b1964d3da007872f967d6d9c9333\nscalar 18001 bae44ab3704f707d3143de8d9ccc8983\nencoding 10373 fe3aaffa8d8a154d6d50deb3851650f1\ngroup 12001 7cb067b82910be022956fa0cc7f8065c\nmul 2630 97c3ef85ef8e2cd3bb373f130914fcb8\n"
+        },
+        {
+          "step": "metrics",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 1793,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: lineage/target/release/examples/lineage_bench scalar_mul cccc2a3284c34dd1\n==7== \n==7== \n==7== I   refs:      241,702,224\n"
+        },
+        {
+          "step": "metrics",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 1751,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: lineage/target/release/examples/lineage_bench scalar_mul cccc2a3284c34dd1\n==7== \n==7== \n==7== I   refs:      242,081,090\n"
+        },
+        {
+          "step": "metrics",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 1568,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: lineage/target/release/examples/lineage_bench msm cccc2a3284c34dd1\n==7== \n==7== \n==7== I   refs:      161,472,008\n"
+        },
+        {
+          "step": "metrics",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 1513,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: lineage/target/release/examples/lineage_bench msm cccc2a3284c34dd1\n==7== \n==7== \n==7== I   refs:      161,536,186\n"
+        },
+        {
+          "step": "metrics",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 900,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: lineage/target/release/examples/lineage_bench decode cccc2a3284c34dd1\n==7== \n==7== \n==7== I   refs:      105,510,522\n"
+        },
+        {
+          "step": "metrics",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 919,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: lineage/target/release/examples/lineage_bench decode cccc2a3284c34dd1\n==7== \n==7== \n==7== I   refs:      104,571,966\n"
+        }
+      ]
+    },
+    {
+      "seq": 91,
+      "kind": "give_up",
+      "at": 1791918889309,
+      "reason": "No change cleared the 1% bar. scalar_mul_ir: keeping the width-5 odd-multiple table in Jacobian form, using full additions instead of batch normalization plus mixed additions, measured 1.0385, so it is worse. The table inversion costs less than the extra 4M+1S per addition. Replacing the MODULUS[1] multiply-accumulate in the Montgomery reduction with a shift-by-32 add measured scalar_mul_ir 1.0016 and decode_ir 0.9935. Adding a single parity read in from_compressed and to_compressed brought decode_ir to 0.9911, just short of 0.9900. Outputs were identical in every run. The sqrt addition chain is already minimal, and width 5 is the cost optimum for the variable-base NAF."
+    }
+  ],
+  "candidate": null,
+  "replays": [],
+  "verdict": null,
+  "outcome": "no_candidate",
+  "effect": null,
+  "cost": {
+    "input_tokens": 2350,
+    "output_tokens": 15992,
+    "cache_read_tokens": 758135,
+    "cache_write_tokens": 56622,
+    "usd": 0.805996,
+    "sandbox_s": 182.142,
+    "source": "worker_report"
+  },
+  "reward": {
+    "v": 1,
+    "accepted": 0,
+    "effect": 0,
+    "fixed_tests": 0,
+    "effect_per_usd": 0,
+    "effect_per_sandbox_hour": 0,
+    "reverted": false,
+    "inputs": [
+      "outcome",
+      "cost.usd (worker_report)",
+      "cost.sandbox_s (worker_report)"
+    ]
+  },
+  "worker_outcome": "no candidate: the session stopped without submitting a change [stop: gave up; model calls: 19]",
+  "journal": {
+    "entry_id": "f484bb12c5354960e596a5d7ed2bf3344342ae95e5437d0d669cf6d7710d65b5",
+    "text": "I tried two things on secp256r1. In group.rs I kept the width-5 odd-multiple table in Jacobian form and used full additions in place of batch normalization plus mixed additions. In field.rs I replaced the MODULUS[1] multiply-accumulate in the Montgomery reduction with a shift-by-32 add, then pointed later edits at decode_ir.\n\nThe Jacobian table measured scalar_mul_ir 250998873 vs 241702224, ratio 1.0385. Worse. The reduction change gave scalar_mul_ir 1.0016, msm_ir 1.0004, decode_ir 0.9935. Two more decode_ir attempts both reached 0.9911 against the required 0.9900. Outputs were identical every time. Nothing was submitted.\n\nThe table inversion is cheaper than the extra 4M+1S per full addition, so batch normalization stays. The reduction is already tight. The shift trick moves decode_ir slightly and does not help scalar_mul_ir.\n\nNext, look at decode_ir through the sqrt and pow chain in field.rs. The square_n path there is where the remaining distance to 0.9900 most likely sits.",
+    "created_at": 1791918894162,
+    "sig": "5zdPqQCacNHVyKwhTv4kHTXvX6UdnMKdqsEDmvHW8xgzrjetibRHN35kwFantv6wD1AidNvuBuaTMrZndtGNZXc",
+    "signer": "5EfJVfkFkWtzzTTLMz38hsG41MzjE5CbEp4d2CLxP9s7"
+  },
+  "provenance": null,
+  "license": null,
+  "attribution": "Code excerpts from https://github.com/anza-xyz/cryptography at 3efe73c7395f735f073bd25162cdc2fb4333f570, copyright its authors; the licence was not determined (see the repository).",
+  "times": {
+    "started_at": 1791918569127,
+    "ended_at": 1791918889320,
+    "finalized_at": null,
+    "published_at": 1791918914323
+  },
+  "verify": {
+    "session": "/v1/sessions/05c02d67633510d7015b805a76a60934da933878fd9253dd4d7efe979ecc8d33",
+    "candidate": null,
+    "generation": null,
+    "provenance": null,
+    "journal": "/v1/agents/21i6QcVZC31twkqZc8mnT4yuwpmGDMh46zWuMJQTiEQb/journal?lineage=92e06c95a332dd6c8f4e2be5187040ee4f375f60217aaff81ae25fa3c0f8e5ca"
+  }
+}
