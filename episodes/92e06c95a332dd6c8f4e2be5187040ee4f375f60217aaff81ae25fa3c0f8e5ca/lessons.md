@@ -1,18 +1,18 @@
 # Lessons: anza-cryptography
 
-Lineage `92e06c95a332dd6c8f4e2be5187040ee4f375f60217aaff81ae25fa3c0f8e5ca` on [https://github.com/anza-xyz/cryptography](https://github.com/anza-xyz/cryptography) at `3efe73c7395f735f073bd25162cdc2fb4333f570`. 38 published attempts.
+Lineage `92e06c95a332dd6c8f4e2be5187040ee4f375f60217aaff81ae25fa3c0f8e5ca` on [https://github.com/anza-xyz/cryptography](https://github.com/anza-xyz/cryptography) at `3efe73c7395f735f073bd25162cdc2fb4333f570`. 39 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
 ## Target perf:scalar_mul_ir
 
-- Attempts: 13 (8 accepted, 1 rejected, 4 no candidate)
+- Attempts: 14 (9 accepted, 1 rejected, 4 no candidate)
 - Best accepted effect: 7.99% (ratio 0.9201), episode `8bdb0dda22a9`
-- Accepted effects: 7.99%, 4.86%, 3.80%, 3.70%, 3.50%, 3.04%, 2.53%, 1.21%
+- Accepted effects: 7.99%, 4.86%, 3.80%, 3.70%, 3.50%, 3.04%, 2.53%, 2.02%, 1.21%
 - Why candidates failed: duplicate (1)
 - Files changed by accepted candidates: `secp256r1/src/field.rs`, `secp256r1/src/group.rs`
 - Files changed by rejected candidates: `secp256r1/src/group.rs`
-- Median model spend per attempt: 0.6268 USD (over 13 attempts with a recorded cost)
+- Median model spend per attempt: 0.6479 USD (over 14 attempts with a recorded cost)
 
 ## Target perf:decode_ir
 
@@ -37,6 +37,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> In secp256r1/src/group.rs, mul_scalar_vartime_unchecked now handles each nonzero wNAF digit with a new private ProjectivePoint::double_add_mixed. It computes 2P + T as (P + T) + P. The mixed addition P + T already yields P rescaled to the sum's Z, since X1*h^2 and Y1*h^3 are intermediates of the formula. So the second addition can use the co-Z formula (5M + 2S) instead of a full doubling. The edit replaced 11 lines at 428-438 with 57.
+> Sandbox evaluation 1: builds ok, outputs identical, guard ok at 52 lines. scalar_mul_ir went from 241597602 to 236697791, ratio 0.9797. msm_ir moved from 175103444 to 175103438 and decode_ir from 107472532 to 107472526, both ratio 1.0000. Submitted and queued. No verdict yet.
+> The gain is small because only nonzero digits take this path. Doublings between digits still cost full price. msm_ir and decode_ir do not reach this code.
+> Next, check whether runs of doublings can use square_n style repeated doubling, and whether the msm path can reuse double_add_mixed.
+>
+> 2026-10-13, episode `1f2c617d89aa` (accepted)
 
 > I tried three edits in secp256r1/src/field.rs. First, a branching FieldElement::sub that adds the modulus only when the subtraction borrows. Second, removing the Jacobi pre-check in sqrt and checking root^2 == self instead. Third, a later variant of the field.rs changes, 26 guarded lines in total.
 > The branching sub gave msm_ir 0.9999, decode_ir 0.9971, scalar_mul_ir 1.0000. It did not help, and the compiler already avoids most of that work. Dropping the Jacobi pre-check made decode_ir 1.3304, much worse. The third attempt gave decode_ir 0.9986, msm_ir 0.9993, scalar_mul_ir 1.0013. All three had identical outputs. All three were rejected against the required 0.9900. I submitted nothing.
@@ -65,13 +72,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next: check whether the generator table is rebuilt per call. If it is, make it a precomputed constant so the wider window costs nothing at runtime. Otherwise look at the variable-point side, odd_multiples and batch normalization, for the msm_ir cost.
 >
 > 2026-10-13, episode `59390ca6647e` (no candidate)
-
-> I replaced the fixed 4-bit windows in double_scalar_mul_vartime_unchecked in secp256r1/src/group.rs with signed NAF digits for both scalars. The old code added a table entry about every 4 bits per scalar and built its point table with 15 additions. The generator scalar now uses width 8 against a cached affine table of G, 3G, ..., 127G. That table is built once in a OnceLock with a single batch normalization. The edits touched 86 lines in one file and removed the old table code near line 845.
-> In the sandbox, msm_ir went from 182453624 to 164677292, ratio 0.9026. scalar_mul_ir moved from 241616496 to 241674003, ratio 1.0002. decode_ir held at 1.0000. Outputs were identical and the guards passed.
-> The double-scalar path was spending its time on additions, not doublings. Fewer nonzero digits plus a precomputed affine table is where the gain came from.
-> Next I want to check whether the variable scalar side benefits from a wider NAF with batch normalized odd multiples. scalar_mul_ir still uses the old windowing and could take the same treatment. The verdict waits on replay.
->
-> 2026-10-13, episode `1b1a4a65a871` (rejected)
 
 ## Licence
 
