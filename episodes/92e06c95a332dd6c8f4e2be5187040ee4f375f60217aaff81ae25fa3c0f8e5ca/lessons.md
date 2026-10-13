@@ -1,6 +1,6 @@
 # Lessons: anza-cryptography
 
-Lineage `92e06c95a332dd6c8f4e2be5187040ee4f375f60217aaff81ae25fa3c0f8e5ca` on [https://github.com/anza-xyz/cryptography](https://github.com/anza-xyz/cryptography) at `3efe73c7395f735f073bd25162cdc2fb4333f570`. 62 published attempts.
+Lineage `92e06c95a332dd6c8f4e2be5187040ee4f375f60217aaff81ae25fa3c0f8e5ca` on [https://github.com/anza-xyz/cryptography](https://github.com/anza-xyz/cryptography) at `3efe73c7395f735f073bd25162cdc2fb4333f570`. 63 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
@@ -16,13 +16,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:decode_ir
 
-- Attempts: 21 (3 rejected, 9 accepted, 9 no candidate)
+- Attempts: 22 (3 rejected, 9 accepted, 10 no candidate)
 - Best accepted effect: 17.73% (ratio 0.8227), episode `d87452637ca1`
 - Accepted effects: 17.73%, 14.23%, 4.04%, 3.71%, 3.44%, 3.04%, 2.59%, 1.70%, 1.36%
 - Why candidates failed: stale (1), apply_conflict (1), stale_conflict (1)
 - Files changed by accepted candidates: `secp256r1/src/field.rs`
 - Files changed by rejected candidates: `secp256r1/src/field.rs`
-- Median model spend per attempt: 0.4270 USD (over 21 attempts with a recorded cost)
+- Median model spend per attempt: 0.4895 USD (over 22 attempts with a recorded cost)
 
 ## Target perf:msm_ir
 
@@ -37,6 +37,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> Target was decode_ir in secp256r1. I read the sqrt path in secp256r1/src/field.rs and the decode bench in lineage/examples/lineage_bench.rs. The sqrt addition chain is 253 squarings and 7 multiplications, and squaring was tuned in earlier generations, so I left it alone. The bench sends 3000 random compressed x values, and about half of them are non-residues, so the Jacobi pre-check stays. I edited the 4-limb and 3-limb binary Jacobi loops in field.rs. The subtract-then-negate step became a top-limb comparison.
+> Sandbox result: rejected. decode_ir went from 101947078 to 102424960, ratio 1.0047, against a required 0.9900. scalar_mul_ir and msm_ir were unchanged at ratio 1.0000. Outputs were identical and the guard passed. The change made decode slightly slower. I reverted the edits and submitted nothing.
+> My current view is that decode cost sits in sqrt and Jacobi, and the branch shape inside the Jacobi loop is not the bottleneck.
+> Next I want to measure the per-iteration cost of the Jacobi loop directly. I also want to check whether the full-width 4-limb phase can hand off to the 3-limb phase earlier.
+>
+> 2026-10-13, episode `0f924faaeabc` (no candidate)
 
 > Tried two things on secp256r1 scalar mul. In group.rs I changed the single-scalar table normalization so the co-Z chain is inverted through its factors and the base inverse is recovered as 2Y/z2. Then in field.rs I added multi-bit trailing-zero stripping to the u128/u64 inversion tails.
 > Evaluation 1, the normalization alone: scalar_mul_ir went from 227377278 to 226009005, ratio 0.9940, with identical outputs. msm_ir and decode_ir held at 1.0000. Rejected, because the floor is 0.9900. Evaluation 3, normalization plus the tail stripping: scalar_mul_ir 1.0007, msm_ir 1.0044, decode_ir 1.0075. Every metric got worse. I reverted the field.rs change. Nothing was submitted.
@@ -65,13 +72,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next, look at the other remaining scalar_mul idea, co-Z table normalization in group.rs, with its earlier measurement in hand before spending a session on it.
 >
 > 2026-10-13, episode `228acd8b35e5` (no candidate)
-
-> Target was msm_ir in secp256r1. First try: in group.rs I folded the per-iteration doubling in multi_scalar_mul_vartime into the first nonzero digit via double_add_mixed, and rewrote double() to get Z3 as (Y+Z)^2 - Y^2 - Z^2. Later tries touched field.rs squaring paths around montgomery_square.
-> Evaluation 1 gave msm_ir ratio 1.0152 and scalar_mul_ir 1.0416. Rejected. Evaluation 3, with group.rs and field.rs edits over 28 lines, reached msm_ir 0.9938. That is better than parent but short of the required 0.9900. Evaluation 5 regressed to msm_ir 1.0108 and scalar_mul_ir 1.0185. All three had identical outputs. No candidate was submitted.
-> In this field code a squaring costs about the same as a multiply. Swapping a multiply for squarings does not pay and can cost. The gains left in the msm loop structure look smaller than 1%.
-> Next, look at the cost of the wnaf table build and add_naf_digit per call rather than at doubling formulas. Also check whether the generator table can be reused across calls.
->
-> 2026-10-13, episode `19c2c3313030` (no candidate)
 
 ## Licence
 
