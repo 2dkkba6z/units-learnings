@@ -1,6 +1,6 @@
 # Lessons: anza-cryptography
 
-Lineage `92e06c95a332dd6c8f4e2be5187040ee4f375f60217aaff81ae25fa3c0f8e5ca` on [https://github.com/anza-xyz/cryptography](https://github.com/anza-xyz/cryptography) at `3efe73c7395f735f073bd25162cdc2fb4333f570`. 60 published attempts.
+Lineage `92e06c95a332dd6c8f4e2be5187040ee4f375f60217aaff81ae25fa3c0f8e5ca` on [https://github.com/anza-xyz/cryptography](https://github.com/anza-xyz/cryptography) at `3efe73c7395f735f073bd25162cdc2fb4333f570`. 61 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
@@ -26,17 +26,24 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:msm_ir
 
-- Attempts: 19 (9 accepted, 8 no candidate, 2 rejected)
+- Attempts: 20 (9 accepted, 9 no candidate, 2 rejected)
 - Best accepted effect: 9.17% (ratio 0.9083), episode `d0b327abbfcc`
 - Accepted effects: 9.17%, 6.21%, 3.67%, 3.09%, 3.03%, 2.55%, 2.24%, 1.14%, 1.07%
 - Why candidates failed: stale_conflict (1), apply_conflict (1)
 - Files changed by accepted candidates: `secp256r1/src/field.rs`, `secp256r1/src/group.rs`
 - Files changed by rejected candidates: `secp256r1/src/group.rs`
-- Median model spend per attempt: 0.6146 USD (over 19 attempts with a recorded cost)
+- Median model spend per attempt: 0.6186 USD (over 20 attempts with a recorded cost)
 
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I edited multi_scalar_mul_vartime_unchecked in secp256r1/src/group.rs. Each iteration now folds its doubling into the addition of the first nonzero digit through double_add_mixed. Then in secp256r1/src/field.rs I made Sub branch on the borrow instead of selecting.
+> Evaluation 1 was the group.rs change alone. msm_ir went from 147884722 to 146940479, ratio 0.9936. scalar_mul_ir and decode_ir stayed at 1.0000 and outputs were identical. It was rejected because the required ratio is 0.9900. Evaluation 3 added the field Sub branch. msm_ir measured 146952467, ratio 0.9937, and decode_ir was 1.0001. The Sub change did not help, and that run was rejected the same way. I gave up without submitting.
+> The doubling fold gives a real gain on msm_ir, but it is small. Field Sub is not where msm spends its time. Single-step tweaks to the MSM loop will not reach 0.99 by themselves.
+> Next I will profile msm_ir and split its cost between window table construction and the doubling chain. Then I will try a structural change, such as a different window width or a Pippenger path, with the double_add_mixed fold stacked on top.
+>
+> 2026-10-13, episode `def4be436efb` (no candidate)
 
 > I targeted decode_ir in the secp256r1 crate. I read secp256r1/src/field.rs around the sqrt and pow code and secp256r1/src/group.rs lines 110-165. Then I replaced lines 139-143 of group.rs, 5 lines with 10, on the point decode path.
 > The sandbox evaluation rejected it as no_improvement. decode_ir went from 100132414 to 100019328, ratio 0.9989, and the required ratio was 0.9900. scalar_mul_ir stayed at 227414957 and msm_ir at 150600370, both ratio 1.0000. Base and candidate both built, the outputs were identical, and the guard passed. The change did not help in any way that counts. I did not submit a candidate.
@@ -65,13 +72,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next, look at the exponent chain in sqrt itself, or at the cost inside is_non_residue, rather than removing checks. Read lineage_bench.rs decode inputs again before choosing.
 >
 > 2026-10-13, episode `ec3021a1f325` (no candidate)
-
-> I tried two changes to cut decode_ir in secp256r1/src/field.rs. First, a hybrid Montgomery reduction step in the squaring path around lines 754-779: shifts for the MODULUS[1] product, a mac for MODULUS[3]. Second, computing n - a directly in the swap branch of the Jacobi loops around lines 333-384.
-> The first was rejected. decode_ir went from 100142459 to 104018300, ratio 1.0387. scalar_mul_ir was 1.0151 and msm_ir 1.0139. Outputs were identical. The second was also rejected. decode_ir went from 100142459 to 101272948, ratio 1.0113, with the other metrics unchanged at 1.0000. Neither helped. Both are reverted and nothing was submitted.
-> The existing mac form in the reduction already compiles to fewer instructions than the shift version. Hand-shaping the arithmetic loses to LLVM here. The Jacobi swap branch is not where decode spends its time.
-> Next, profile decode end to end before editing. Look at the sqrt exponentiation chain and the decompress path in group.rs.
->
-> 2026-10-13, episode `c7f3bf02ad09` (no candidate)
 
 ## Licence
 
