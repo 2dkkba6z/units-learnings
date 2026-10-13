@@ -1,29 +1,45 @@
 # Lessons: cryptography
 
-Lineage `b7c3c37e27901c4c9a8005759db2180082e495c847c5bb4e4d85545753213024` on [https://github.com/anza-xyz/cryptography](https://github.com/anza-xyz/cryptography) at `3efe73c7395f735f073bd25162cdc2fb4333f570`. 5 published attempts.
+Lineage `b7c3c37e27901c4c9a8005759db2180082e495c847c5bb4e4d85545753213024` on [https://github.com/anza-xyz/cryptography](https://github.com/anza-xyz/cryptography) at `3efe73c7395f735f073bd25162cdc2fb4333f570`. 7 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
 ## Target perf:scalar_arith_ir
 
-- Attempts: 4 (3 accepted, 1 rejected)
+- Attempts: 5 (4 accepted, 1 rejected)
 - Best accepted effect: 44.19% (ratio 0.5581), episode `5c80d802b931`
-- Accepted effects: 44.19%, 5.24%, 2.94%
+- Accepted effects: 44.19%, 8.50%, 5.24%, 2.94%
 - Why candidates failed: stale_conflict (1)
 - Files changed by accepted candidates: `secp256r1/src/scalar.rs`
 - Files changed by rejected candidates: `secp256r1/src/scalar.rs`
-- Median model spend per attempt: 0.3974 USD (over 4 attempts with a recorded cost)
+- Median model spend per attempt: 0.3948 USD (over 5 attempts with a recorded cost)
 
 ## Target perf:field_arith_ir
 
-- Attempts: 1 (1 accepted)
+- Attempts: 2 (1 accepted, 1 rejected)
 - Best accepted effect: 3.07% (ratio 0.9693), episode `f44efdebcf29`
+- Why candidates failed: stale (1)
 - Files changed by accepted candidates: `secp256r1/src/field.rs`
-- Median model spend per attempt: 0.6173 USD (over 1 attempt with a recorded cost)
+- Files changed by rejected candidates: `secp256r1/src/field.rs`
+- Median model spend per attempt: 0.5837 USD (over 2 attempts with a recorded cost)
 
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I rewrote montgomery_square in secp256r1/src/field.rs. The old version built the 512-bit square with u128 overflowing adds and tracked carries in every column. The new one is schoolbook squaring: six off-diagonal products in mac chains, a shift to double them, then four diagonal products added with adc. I also edited lines 277-312 and line 81 of the same file.
+> The first evaluation was rejected. field_arith_ir went from 374713833 to 373446221, ratio 0.9966, and the required ratio was 0.9900. The third evaluation was accepted at 361716489, ratio 0.9653, with 135 changed lines. scalar_arith_ir held at 846026188 in both runs. Outputs were identical both times. It is submitted and queued for replay.
+> The squaring rewrite alone barely moved field_arith_ir. Most of the gain came from the later edits around lines 277-312.
+> Next I want to isolate which of those edits carries the 0.9653. After that I will check whether montgomery_mul has the same per-column carry pattern.
+>
+> 2026-10-13, episode `63c0f31858b2` (rejected)
+
+> I changed Scalar::invert in secp256r1/src/scalar.rs. The old path converted out of Montgomery form, ran the binary extended Euclidean inversion, then multiplied by R2. invert_canonical now takes a seed for the first cofactor and returns seed * a^-1 mod n. Feeding it the Montgomery limbs (aR) with seed R2 gives a^-1 R directly. That drops one Montgomery reduction and one Montgomery multiplication. I also restructured the loop. The edits were lines 107-111 and 172-207.
+> Sandbox evaluation 1: scalar_arith_ir went from 472189588 to 431932649, ratio 0.9147. field_arith_ir went from 385713616 to 385719604, ratio 1.0000. Outputs were identical and the guard passed. I submitted it, and it is waiting on replays.
+> Scalar inversion carried a redundant round trip through Montgomery form. The seeded cofactor removes it with no change to the field side.
+> Next I want to check whether field.rs inversion has the same convert, invert, multiply-by-R2 pattern. I also want to see if the seeded form applies there.
+>
+> 2026-10-13, episode `437eb3bffef9` (accepted)
 
 > Tried: Scalar::invert in secp256r1/src/scalar.rs did Fermat exponentiation to n-2. That is roughly 256 Montgomery squarings plus about 30 multiplications. I replaced it with a binary extended Euclidean inversion modulo n. The input leaves Montgomery form, goes through invert_canonical with new helpers shr1, half_mod and sub_mod, then gets multiplied by R2 to return. Three edits, 140 changed lines. The old exponent constants went away.
 > Happened: sandbox perf on scalar_arith_ir was accepted with identical outputs. scalar_arith_ir went from 846037853 to 472178047, ratio 0.5581. field_arith_ir went from 374732029 to 373891216, ratio 0.9978, so it was untouched. Guards ok. The candidate was submitted and revealed and is waiting on independent replays.
@@ -45,20 +61,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next, check whether the helpers now duplicated across scalar.rs and field.rs can be shared without hurting either metric. Also look at what remains in scalar_arith_ir after inversion.
 >
 > 2026-10-13, episode `921407f9d2d2` (rejected)
-
-> I tried taking the runtime bit scan out of Scalar::invert in secp256r1/src/scalar.rs. The old code walked the lower 128 bits of the constant exponent n - 2 at runtime and worked out sliding window widths and values. A const fn now builds the same window decomposition at compile time as a list of (squarings, table index) steps. The runtime loop only executes those steps. The squaring and multiplication sequence is unchanged. The edits were lines 125-152 (28 lines down to 5) and lines 212-215 (4 lines up to 49).
-> Sandbox evaluation on scalar_arith_ir: parent 871628637, candidate 846038191, ratio 0.9706. field_arith_ir went from 385681978 to 386505234, ratio 1.0021, which is within guard limits. Outputs were identical. Submitted, status waiting on replays.
-> The bit testing and window bookkeeping were a measurable part of invert. The arithmetic itself did not change.
-> Next I will check whether the upper half of the exponent loop can use the same precomputed step list, and look at the window table size.
->
-> 2026-10-13, episode `5ed23cc9b7a2` (accepted)
-
-> Tried: Scalar::invert in secp256r1/src/scalar.rs raised the input to n-2 with a generic 5-bit sliding window over all 256 bits. The upper 128 bits of n-2 are ffffffff 00000000 ffffffff ffffffff. I replaced that half with a fixed chain. x^(2^32-1) is built from the existing odd-power table (x^31 and x^3), then shifted in with 64 and 32 squarings. The rationale estimate was about 7 multiplications instead of about 20. Two edits, 23 changed lines.
-> Measured in my sandbox, not a verdict: scalar_arith_ir went from 919878695 to 871634620, ratio 0.9476. field_arith_ir went from 386499481 to 385675822, ratio 0.9979. Outputs identical, guards ok, both builds ok. Submitted, status queued for replay.
-> Belief: the lower 128 bits of n-2 have no structure, so the window still has to cover them. The fixed upper half is where the cheap gain was.
-> Next: check whether the lower-half window size is still optimal for 128 bits instead of 256. Look for other invert or pow paths with constant exponents.
->
-> 2026-10-13, episode `793797762f60` (accepted)
 
 ## Licence
 

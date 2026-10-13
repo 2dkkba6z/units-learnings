@@ -1,18 +1,18 @@
 # Lessons: anza-cryptography
 
-Lineage `92e06c95a332dd6c8f4e2be5187040ee4f375f60217aaff81ae25fa3c0f8e5ca` on [https://github.com/anza-xyz/cryptography](https://github.com/anza-xyz/cryptography) at `3efe73c7395f735f073bd25162cdc2fb4333f570`. 51 published attempts.
+Lineage `92e06c95a332dd6c8f4e2be5187040ee4f375f60217aaff81ae25fa3c0f8e5ca` on [https://github.com/anza-xyz/cryptography](https://github.com/anza-xyz/cryptography) at `3efe73c7395f735f073bd25162cdc2fb4333f570`. 53 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
 ## Target perf:scalar_mul_ir
 
-- Attempts: 17 (10 accepted, 1 rejected, 6 no candidate)
+- Attempts: 18 (10 accepted, 1 rejected, 7 no candidate)
 - Best accepted effect: 7.99% (ratio 0.9201), episode `8bdb0dda22a9`
 - Accepted effects: 7.99%, 4.86%, 3.80%, 3.70%, 3.50%, 3.04%, 2.53%, 2.02%, 1.25%, 1.21%
 - Why candidates failed: duplicate (1)
 - Files changed by accepted candidates: `secp256r1/src/field.rs`, `secp256r1/src/group.rs`
 - Files changed by rejected candidates: `secp256r1/src/group.rs`
-- Median model spend per attempt: 0.5935 USD (over 17 attempts with a recorded cost)
+- Median model spend per attempt: 0.6101 USD (over 18 attempts with a recorded cost)
 
 ## Target perf:decode_ir
 
@@ -26,17 +26,31 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:msm_ir
 
-- Attempts: 16 (8 accepted, 6 no candidate, 2 rejected)
+- Attempts: 17 (8 accepted, 7 no candidate, 2 rejected)
 - Best accepted effect: 9.17% (ratio 0.9083), episode `d0b327abbfcc`
 - Accepted effects: 9.17%, 6.21%, 3.67%, 3.03%, 2.55%, 2.24%, 1.14%, 1.07%
 - Why candidates failed: stale_conflict (1), apply_conflict (1)
 - Files changed by accepted candidates: `secp256r1/src/group.rs`
 - Files changed by rejected candidates: `secp256r1/src/group.rs`
-- Median model spend per attempt: 0.5870 USD (over 16 attempts with a recorded cost)
+- Median model spend per attempt: 0.6040 USD (over 17 attempts with a recorded cost)
 
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I tried to cut msm_ir in secp256r1/src/group.rs. Around lines 635-645 I folded the doubling in the msm loop into the addition of the first nonzero digit, using double_add_mixed. I read the field mul and square code in field.rs, and the wNAF and mixed-addition paths, looking for other targets.
+> The sandbox evaluation gave identical outputs. msm_ir went from 157248331 to 156306458, ratio 0.9940. The bar is 0.9900, so it was rejected as no improvement. scalar_mul_ir and decode_ir held at ratio 1.0000. Guard ok. The change did not help enough, so I submitted nothing.
+> On this path I found little left to take. Table normalization, wNAF recoding, window width, field mul/square and the mixed-addition formulas already look near optimal. The doubling fold alone reaches 0.9940 and no further.
+> Next, combine the double_add_mixed fold with a second saving. Or look outside the msm inner loop, at setup or table build cost, to close the remaining gap to 0.9900.
+>
+> 2026-10-13, episode `73abe57dd895` (no candidate)
+
+> I tried to cut the cost of normalizing the odd-multiple table in scalar_mul in secp256r1/src/group.rs. The table comes out of a co-Z chain. So I inverted only the last Z and recovered the earlier inverses from the chain factors, replacing per-point normalization. I also tried precomputing a negated table.
+> Evaluation 1 with the co-Z normalization gave scalar_mul_ir 233573339 to 232131273, ratio 0.9938. The required ratio is 0.9900, so it was rejected. Outputs were identical. msm_ir and decode_ir stayed at 1.0000. Evaluation 3 added the negated table and got 232196719, ratio 0.9941. That is slightly worse, so I reverted it. No candidate was submitted.
+> The table normalization is real work but a small share of scalar_mul. Removing inversions there moves the total by well under one percent. The negated table does not pay for itself.
+> Next, look past table setup at the main loop: the wnaf5 digit handling and the per-step add and double costs, plus montgomery_square and montgomery_mul in field.rs.
+>
+> 2026-10-13, episode `e80009b8a7f3` (no candidate)
 
 > I tried two changes in secp256r1/src/field.rs aimed at decode_ir. First, in invert_canonical and its 192/128/64-bit tails, I stripped all trailing zeros with one variable shift instead of one bit per step. Second, I dropped the Jacobi pre-check in sqrt.
 > The first change measured decode_ir 1.0238, scalar_mul_ir 1.0205 and msm_ir 1.0128. It was rejected against the required 0.9900. The second measured decode_ir 1.3373, with scalar_mul_ir and msm_ir at 1.0000. Outputs were identical in both runs. Neither change helped. Both are reverted, and no candidate was submitted.
@@ -58,20 +72,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next, check whether scalar_mul can reuse normalize_co_z_chains.
 >
 > 2026-10-13, episode `c991056424a2` (accepted)
-
-> I changed double_scalar_mul_vartime_unchecked and multi_scalar_mul_vartime_unchecked in secp256r1/src/group.rs. Each loop step used to call double() and then add_mixed for the first nonzero wNAF digit. It now calls the existing ProjectivePoint::double_add_mixed, which computes 2P + Q as (P + Q) + P with a co-Z second addition. Any remaining nonzero digits still go through add_mixed. There were four edits, 32 changed lines in total.
-> In my sandbox, msm_ir went from 165237071 to 159730070, a ratio of 0.9667. scalar_mul_ir went from 233754558 to 233754584 and decode_ir from 101403642 to 101403668, both ratio 1.0000. Outputs were identical, the guard was ok and both builds passed. I submitted it. The verdict waits on replays.
-> I think the doubling step is where the multi-scalar path spends its cost, and that fusing operations there pays off. The single-scalar path did not change, so the fusion is not used there.
-> Next I want to check whether scalar_mul can use double_add_mixed the same way. I also want to look at the field.rs mul and square paths that sit under it.
->
-> 2026-10-13, episode `73d31b393df3` (rejected)
-
-> I targeted the repeated squarings in FieldElement::sqrt in secp256r1/src/field.rs. I added montgomery_square_wide, which returns the 5-limb Montgomery result before the final conditional subtraction. square_n now only folds back the 2^256 overflow: when r8 != 0 it subtracts p once. Limbs stay below 2^256 but are not always canonical. This removes the compare-and-branch against p on each squaring in the chain.
-> Sandbox run, measured before replay and not a verdict. decode_ir went from 105056914 to 101221734, ratio 0.9635. scalar_mul_ir went from 233871469 to 233871493 and msm_ir from 162678237 to 162678261, both ratio 1.0000. Outputs were identical. The guard was ok at 59 lines in 1 file. The candidate is submitted and waiting on replays.
-> Decode cost is dominated by the sqrt chain, so per-squaring reduction work there is visible. The scalar_mul and msm paths do not use square_n, which is why they did not move.
-> Next, I could try the same lazy reduction in invert_canonical's chain. I would also check whether from_bytes validation has redundant reductions.
->
-> 2026-10-13, episode `5577627ed079` (accepted)
 
 ## Licence
 
