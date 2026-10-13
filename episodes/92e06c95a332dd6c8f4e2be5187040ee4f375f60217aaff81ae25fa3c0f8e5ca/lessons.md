@@ -1,6 +1,6 @@
 # Lessons: anza-cryptography
 
-Lineage `92e06c95a332dd6c8f4e2be5187040ee4f375f60217aaff81ae25fa3c0f8e5ca` on [https://github.com/anza-xyz/cryptography](https://github.com/anza-xyz/cryptography) at `3efe73c7395f735f073bd25162cdc2fb4333f570`. 50 published attempts.
+Lineage `92e06c95a332dd6c8f4e2be5187040ee4f375f60217aaff81ae25fa3c0f8e5ca` on [https://github.com/anza-xyz/cryptography](https://github.com/anza-xyz/cryptography) at `3efe73c7395f735f073bd25162cdc2fb4333f570`. 51 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
@@ -16,13 +16,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:decode_ir
 
-- Attempts: 17 (3 rejected, 9 accepted, 5 no candidate)
+- Attempts: 18 (3 rejected, 9 accepted, 6 no candidate)
 - Best accepted effect: 17.73% (ratio 0.8227), episode `d87452637ca1`
 - Accepted effects: 17.73%, 14.23%, 4.04%, 3.71%, 3.44%, 3.04%, 2.59%, 1.70%, 1.36%
 - Why candidates failed: stale (1), apply_conflict (1), stale_conflict (1)
 - Files changed by accepted candidates: `secp256r1/src/field.rs`
 - Files changed by rejected candidates: `secp256r1/src/field.rs`
-- Median model spend per attempt: 0.4258 USD (over 17 attempts with a recorded cost)
+- Median model spend per attempt: 0.4264 USD (over 18 attempts with a recorded cost)
 
 ## Target perf:msm_ir
 
@@ -37,6 +37,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I tried two changes in secp256r1/src/field.rs aimed at decode_ir. First, in invert_canonical and its 192/128/64-bit tails, I stripped all trailing zeros with one variable shift instead of one bit per step. Second, I dropped the Jacobi pre-check in sqrt.
+> The first change measured decode_ir 1.0238, scalar_mul_ir 1.0205 and msm_ir 1.0128. It was rejected against the required 0.9900. The second measured decode_ir 1.3373, with scalar_mul_ir and msm_ir at 1.0000. Outputs were identical in both runs. Neither change helped. Both are reverted, and no candidate was submitted.
+> The zero runs stripped in invert_canonical are usually one bit long, so a variable shift costs more than the single-bit step it replaces. The Jacobi pre-check in sqrt pays for itself on the decode path. Removing it made decode much worse.
+> Next I would leave the inversion loop structure and the sqrt pre-check as they are. I would look elsewhere in the decode path in group.rs for cost.
+>
+> 2026-10-13, episode `2e78a5c9173c` (no candidate)
 
 > I tried two changes to secp256r1 scalar multiplication. In group.rs at lines 358-366 I swapped the doubling to the 2001-b form, computing Z3 = (Y+Z)^2 - Y^2 - Z^2 in place of 2Y*Z. In field.rs I rewrote FieldElement::sub so it branches explicitly.
 > The doubling change measured worse. scalar_mul_ir went from 233643966 to 238808652, ratio 1.0221, and msm_ir had ratio 1.0129. Outputs were identical. It was rejected. The sub change measured flat. scalar_mul_ir was 233635430 against 233643966, ratio 1.0000, and msm_ir was 0.9999. It was rejected because it missed the 0.9900 bar. Nothing was submitted.
@@ -65,13 +72,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next, I could try the same lazy reduction in invert_canonical's chain. I would also check whether from_bytes validation has redundant reductions.
 >
 > 2026-10-13, episode `5577627ed079` (accepted)
-
-> I changed multi_scalar_mul_vartime_unchecked in secp256r1/src/group.rs, lines 620-630. Each step's doubling now fuses into its first nonzero digit add through the existing double_add_mixed. Everything else in the loop is unchanged.
-> Outputs were identical and the guards passed, with 1 file and 22 lines. msm_ir went from 155957547 to 155083925, a ratio of 0.9944. The required ratio is 0.9900, so the evaluation was rejected for no improvement. scalar_mul_ir stayed at 233832837 and decode_ir at 104276128, both at ratio 1.0000. I did not submit a candidate.
-> The fusion is correct but too small. Each fused step saves only about two field squarings, and that does not move msm_ir far enough. The remaining cost of the msm path is elsewhere in the per-step work, not in the doubling seam.
-> Next I will look at the msm path as a whole, for example the odd_multiples and batch_normalize table setup and the field mul and square in field.rs. I will not stack more micro-fusions on the same loop.
->
-> 2026-10-13, episode `0406e3bf21c0` (no candidate)
 
 ## Licence
 
