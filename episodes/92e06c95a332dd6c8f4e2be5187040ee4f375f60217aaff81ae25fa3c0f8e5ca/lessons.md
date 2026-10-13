@@ -1,18 +1,18 @@
 # Lessons: anza-cryptography
 
-Lineage `92e06c95a332dd6c8f4e2be5187040ee4f375f60217aaff81ae25fa3c0f8e5ca` on [https://github.com/anza-xyz/cryptography](https://github.com/anza-xyz/cryptography) at `3efe73c7395f735f073bd25162cdc2fb4333f570`. 61 published attempts.
+Lineage `92e06c95a332dd6c8f4e2be5187040ee4f375f60217aaff81ae25fa3c0f8e5ca` on [https://github.com/anza-xyz/cryptography](https://github.com/anza-xyz/cryptography) at `3efe73c7395f735f073bd25162cdc2fb4333f570`. 62 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
 ## Target perf:scalar_mul_ir
 
-- Attempts: 20 (10 accepted, 1 rejected, 9 no candidate)
+- Attempts: 21 (10 accepted, 1 rejected, 10 no candidate)
 - Best accepted effect: 7.99% (ratio 0.9201), episode `8bdb0dda22a9`
 - Accepted effects: 7.99%, 4.86%, 3.80%, 3.70%, 3.50%, 3.04%, 2.53%, 2.02%, 1.25%, 1.21%
 - Why candidates failed: duplicate (1)
 - Files changed by accepted candidates: `secp256r1/src/field.rs`, `secp256r1/src/group.rs`
 - Files changed by rejected candidates: `secp256r1/src/group.rs`
-- Median model spend per attempt: 0.6204 USD (over 20 attempts with a recorded cost)
+- Median model spend per attempt: 0.6268 USD (over 21 attempts with a recorded cost)
 
 ## Target perf:decode_ir
 
@@ -37,6 +37,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> Tried two things on secp256r1 scalar mul. In group.rs I changed the single-scalar table normalization so the co-Z chain is inverted through its factors and the base inverse is recovered as 2Y/z2. Then in field.rs I added multi-bit trailing-zero stripping to the u128/u64 inversion tails.
+> Evaluation 1, the normalization alone: scalar_mul_ir went from 227377278 to 226009005, ratio 0.9940, with identical outputs. msm_ir and decode_ir held at 1.0000. Rejected, because the floor is 0.9900. Evaluation 3, normalization plus the tail stripping: scalar_mul_ir 1.0007, msm_ir 1.0044, decode_ir 1.0075. Every metric got worse. I reverted the field.rs change. Nothing was submitted.
+> The co-Z inversion trick is a real gain, but it is too small to count on its own. Trailing-zero stripping in the inversion tails costs more in branches than it saves in shifts.
+> Next, keep the group.rs normalization and pair it with a second saving in the scalar_mul path, so that together they clear 0.9900. Leave the inversion tails alone.
+>
+> 2026-10-13, episode `f96778b1a3b8` (no candidate)
 
 > I edited multi_scalar_mul_vartime_unchecked in secp256r1/src/group.rs. Each iteration now folds its doubling into the addition of the first nonzero digit through double_add_mixed. Then in secp256r1/src/field.rs I made Sub branch on the borrow instead of selecting.
 > Evaluation 1 was the group.rs change alone. msm_ir went from 147884722 to 146940479, ratio 0.9936. scalar_mul_ir and decode_ir stayed at 1.0000 and outputs were identical. It was rejected because the required ratio is 0.9900. Evaluation 3 added the field Sub branch. msm_ir measured 146952467, ratio 0.9937, and decode_ir was 1.0001. The Sub change did not help, and that run was rejected the same way. I gave up without submitting.
@@ -65,13 +72,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next, look at the cost of the wnaf table build and add_naf_digit per call rather than at doubling formulas. Also check whether the generator table can be reused across calls.
 >
 > 2026-10-13, episode `19c2c3313030` (no candidate)
-
-> Tried two changes to speed up decode_ir in secp256r1/src/field.rs. First, removed the Jacobi pre-check from FieldElement::sqrt and verified root^2 == input after the exponent chain instead. Second, swapped in a shift-based Montgomery reduction in the montgomery path around line 711.
-> The first change measured decode_ir 101940256 to 133915407, ratio 1.3137. Outputs were identical. scalar_mul_ir and msm_ir were flat at 1.0000. Rejected. The second change measured decode_ir ratio 1.0580, scalar_mul_ir 1.0185, msm_ir 1.0173. It was worse everywhere. Rejected. Both are reverted. No candidate was submitted.
-> The Jacobi early exit pays for itself. The bench feeds random compressed X values, and about half are non-residues, so skipping the full chain wins. The existing reduction is already cheaper than the shift-based form on this target.
-> Next, look at the exponent chain in sqrt itself, or at the cost inside is_non_residue, rather than removing checks. Read lineage_bench.rs decode inputs again before choosing.
->
-> 2026-10-13, episode `ec3021a1f325` (no candidate)
 
 ## Licence
 
