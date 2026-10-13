@@ -1,0 +1,793 @@
+{
+  "schema": "lineage-episode/1",
+  "episode_id": "ca6d6aa8dbad3317eed9f6948570b2f2b43905022cb5f730c52fb1ea3a6a588b",
+  "seq": 535,
+  "network": "mainnet",
+  "session_id": "5efca1b601a78d6de44925f205ff3179e3ff6577019b4aa64d40e7a1202ff34a",
+  "agent": {
+    "id": "21i6QcVZC31twkqZc8mnT4yuwpmGDMh46zWuMJQTiEQb",
+    "name": "Tamhatch",
+    "hidden": false,
+    "hosted": true,
+    "identity_mode": "purchased",
+    "soul": {
+      "digest": "4a1faf5c2d68b9603f2b762a28b84e4671a244e516f9918872beb53c15b55be6",
+      "seq": 1,
+      "stored_at": 1791906992710,
+      "declared_model": {
+        "provider": "anthropic",
+        "id": "claude-opus-5-5"
+      }
+    }
+  },
+  "model": {
+    "provider": "anthropic",
+    "models": [
+      "anthropic/claude-opus-5.5"
+    ],
+    "route": {
+      "via": "openrouter",
+      "model": {
+        "provider": "anthropic",
+        "id": "claude-opus-5-5"
+      },
+      "upstream": [
+        "Anthropic"
+      ]
+    },
+    "harness": {
+      "name": "anthropic",
+      "version": "anthropic/1",
+      "digest": "e9d0933f46b9ee179cab4fea68a99e840279371b972fd98aa8270954fd0cefeb",
+      "provider": "openrouter"
+    },
+    "source": "worker_report"
+  },
+  "task": {
+    "recipe": {
+      "recipe_id": "55cce223c7be7f5e6209aa0279ec707a53bd86358bf153fc4aa5bdaec18255ae",
+      "name": "cryptography",
+      "class": "rust",
+      "repo": "https://github.com/anza-xyz/cryptography",
+      "commit": "3efe73c7395f735f073bd25162cdc2fb4333f570"
+    },
+    "lineage_id": "b7c3c37e27901c4c9a8005759db2180082e495c847c5bb4e4d85545753213024",
+    "parent_gen_id": "85edc576aafb8c486f0271d4e86de9cd0eea6825de38cb3a5a8073efc82783df",
+    "parent_height": 20,
+    "metrics": [
+      {
+        "name": "scalar_arith_ir",
+        "kind": "perf",
+        "direction": "lower",
+        "deterministic": true,
+        "min_effect": 0.01
+      },
+      {
+        "name": "field_arith_ir",
+        "kind": "perf",
+        "direction": "lower",
+        "deterministic": true,
+        "min_effect": 0.01
+      }
+    ],
+    "target": {
+      "kind": "perf",
+      "target": "scalar_arith_ir",
+      "source": "worker_report.planned"
+    },
+    "baseline": null
+  },
+  "plan": {
+    "planned": {
+      "kind": "perf",
+      "target": "scalar_arith_ir",
+      "note": null
+    },
+    "opening_note": "My notes say the mac-chain scalar square reached only 0.9934, and the from_bytes_reduced and reduction-shortcut edits did nothing, so I shouldn't repeat those alone. This time I'll read what the scalar_arith bench actually calls before choosing what to change.",
+    "source": "worker_report + session notes"
+  },
+  "hypotheses": [
+    "My notes say the mac-chain scalar square reached only 0.9934, and the from_bytes_reduced and reduction-shortcut edits did nothing, so I shouldn't repeat those alone. This time I'll read what the scalar_arith bench actually calls before choosing what to change.",
+    "The polynomial loop does roughly 820k mul+add pairs against 6000 inverts, so multiplication is probably the dominant cost. Next I'll read the scalar mul path.",
+    "That search pulled in the whole repository. I'll read secp256r1/src/scalar.rs directly.",
+    "Next, the four `mac(_, k, MODULUS[2], _)` sites become a helper that uses k·(2^64−1) = (k<<64) − k.",
+    "I checked the bound: (2^64−1)·k + a + carry ≤ 2^128 − 1, so nothing overflows, debug builds included. Evaluating now."
+  ],
+  "actions": [
+    {
+      "seq": 1,
+      "kind": "note",
+      "at": 1791931364667,
+      "text": "My notes say the mac-chain scalar square reached only 0.9934, and the from_bytes_reduced and reduction-shortcut edits did nothing, so I shouldn't repeat those alone. This time I'll read what the scalar_arith bench actually calls before choosing what to change."
+    },
+    {
+      "seq": 2,
+      "kind": "search",
+      "query": "fn bench_scalar|scalar_arith|Scalar::",
+      "matches": 422,
+      "at": 1791931364687
+    },
+    {
+      "seq": 3,
+      "kind": "search",
+      "query": "scalar_arith|fn bench_scalar",
+      "matches": 13,
+      "at": 1791931367526
+    },
+    {
+      "seq": 4,
+      "kind": "read",
+      "path": "lineage/examples/lineage_bench.rs",
+      "start_line": 1,
+      "end_line": 100,
+      "content_sha256": "d851f9cab01fe8bccb1e1863c6bbb1b4fe5f85406a84d95ac3388ab30857357e",
+      "at": 1791931370049
+    },
+    {
+      "seq": 5,
+      "kind": "note",
+      "at": 1791931375153,
+      "text": "The polynomial loop does roughly 820k mul+add pairs against 6000 inverts, so multiplication is probably the dominant cost. Next I'll read the scalar mul path."
+    },
+    {
+      "seq": 6,
+      "kind": "search",
+      "query": "fn ",
+      "matches": 2147,
+      "at": 1791931375166
+    },
+    {
+      "seq": 7,
+      "kind": "note",
+      "at": 1791931378980,
+      "text": "That search pulled in the whole repository. I'll read secp256r1/src/scalar.rs directly."
+    },
+    {
+      "seq": 8,
+      "kind": "read",
+      "path": "secp256r1/src/scalar.rs",
+      "start_line": 330,
+      "end_line": 520,
+      "content_sha256": "9ca22e0aa9cb7da3dec782561dc0b5f13d107fea39012c18020fc926e24baf99",
+      "at": 1791931378981
+    },
+    {
+      "seq": 9,
+      "kind": "read",
+      "path": "secp256r1/src/scalar.rs",
+      "start_line": 520,
+      "end_line": 620,
+      "content_sha256": "9ca22e0aa9cb7da3dec782561dc0b5f13d107fea39012c18020fc926e24baf99",
+      "at": 1791931381434
+    },
+    {
+      "seq": 10,
+      "kind": "read",
+      "path": "secp256r1/src/scalar.rs",
+      "start_line": 1,
+      "end_line": 200,
+      "content_sha256": "9ca22e0aa9cb7da3dec782561dc0b5f13d107fea39012c18020fc926e24baf99",
+      "at": 1791931395176
+    },
+    {
+      "seq": 11,
+      "kind": "read",
+      "path": "secp256r1/src/scalar.rs",
+      "start_line": 200,
+      "end_line": 330,
+      "content_sha256": "9ca22e0aa9cb7da3dec782561dc0b5f13d107fea39012c18020fc926e24baf99",
+      "at": 1791931409139
+    },
+    {
+      "seq": 12,
+      "kind": "edit",
+      "path": "secp256r1/src/scalar.rs",
+      "start_line": 528,
+      "end_line": 550,
+      "lines_before": 23,
+      "lines_after": 23,
+      "at": 1791931440277,
+      "diff": "--- a/secp256r1/src/scalar.rs\n+++ b/secp256r1/src/scalar.rs\n@@ -528,23 +528,23 @@\n-    let k = r0.wrapping_mul(MODULUS_INV);\n-    let (_, carry) = mac(r0, k, MODULUS[0], 0);\n-    let (r1, carry) = mac(r1, k, MODULUS[1], carry);\n-    let (r2, carry) = mac(r2, k, MODULUS[2], carry);\n-    let (r3, carry) = mac(r3, k, MODULUS[3], carry);\n-    let (r4, carry2) = adc(r4, 0, carry);\n-\n-    let k = r1.wrapping_mul(MODULUS_INV);\n-    let (_, carry) = mac(r1, k, MODULUS[0], 0);\n-    let (r2, carry) = mac(r2, k, MODULUS[1], carry);\n-    let (r3, carry) = mac(r3, k, MODULUS[2], carry);\n-    let (r4, carry) = mac(r4, k, MODULUS[3], carry);\n-    let (r5, carry2) = adc(r5, carry2, carry);\n-\n-    let k = r2.wrapping_mul(MODULUS_INV);\n-    let (_, carry) = mac(r2, k, MODULUS[0], 0);\n-    let (r3, carry) = mac(r3, k, MODULUS[1], carry);\n-    let (r4, carry) = mac(r4, k, MODULUS[2], carry);\n-    let (r5, carry) = mac(r5, k, MODULUS[3], carry);\n-    let (r6, carry2) = adc(r6, carry2, carry);\n-\n-    let k = r3.wrapping_mul(MODULUS_INV);\n-    let (_, carry) = mac(r3, k, MODULUS[0], 0);\n+    let k = r0.wrapping_mul(MODULUS_INV);\n+    let carry = low_word_carry(r0, k);\n+    let (r1, carry) = mac(r1, k, MODULUS[1], carry);\n+    let (r2, carry) = mac(r2, k, MODULUS[2], carry);\n+    let (r3, carry) = mac(r3, k, MODULUS[3], carry);\n+    let (r4, carry2) = adc(r4, 0, carry);\n+\n+    let k = r1.wrapping_mul(MODULUS_INV);\n+    let carry = low_word_carry(r1, k);\n+    let (r2, carry) = mac(r2, k, MODULUS[1], carry);\n+    let (r3, carry) = mac(r3, k, MODULUS[2], carry);\n+    let (r4, carry) = mac(r4, k, MODULUS[3], carry);\n+    let (r5, carry2) = adc(r5, carry2, carry);\n+\n+    let k = r2.wrapping_mul(MODULUS_INV);\n+    let carry = low_word_carry(r2, k);\n+    let (r3, carry) = mac(r3, k, MODULUS[1], carry);\n+    let (r4, carry) = mac(r4, k, MODULUS[2], carry);\n+    let (r5, carry) = mac(r5, k, MODULUS[3], carry);\n+    let (r6, carry2) = adc(r6, carry2, carry);\n+\n+    let k = r3.wrapping_mul(MODULUS_INV);\n+    let carry = low_word_carry(r3, k);"
+    },
+    {
+      "seq": 13,
+      "kind": "edit",
+      "path": "secp256r1/src/scalar.rs",
+      "start_line": 559,
+      "end_line": 560,
+      "lines_before": 2,
+      "lines_after": 10,
+      "at": 1791931440278,
+      "diff": "--- a/secp256r1/src/scalar.rs\n+++ b/secp256r1/src/scalar.rs\n@@ -559,2 +559,10 @@\n-#[inline(always)]\n-fn reduce_wide(\n+/// Carry out of `r + k * MODULUS[0]` for `k = r * MODULUS_INV`. The low word\n+/// of the sum is zero by construction, so it carries exactly when `r != 0`.\n+#[inline(always)]\n+fn low_word_carry(r: u64, k: u64) -> u64 {\n+    let high = (((k as u128) * (MODULUS[0] as u128)) >> 64) as u64;\n+    high + u64::from(r != 0)\n+}\n+\n+#[inline(always)]\n+fn reduce_wide("
+    },
+    {
+      "seq": 14,
+      "kind": "evaluate",
+      "target": "scalar_arith_ir",
+      "eval_kind": "perf",
+      "at": 1791931440306,
+      "phases": [
+        {
+          "phase": "prepare",
+          "at": 1791931442246
+        },
+        {
+          "phase": "build",
+          "at": 1791931442999
+        },
+        {
+          "phase": "build",
+          "at": 1791931443003
+        },
+        {
+          "phase": "test",
+          "at": 1791931455673
+        },
+        {
+          "phase": "test",
+          "at": 1791931456044
+        },
+        {
+          "phase": "equivalence",
+          "at": 1791931456338
+        },
+        {
+          "phase": "equivalence",
+          "at": 1791931456338
+        },
+        {
+          "phase": "metrics",
+          "at": 1791931457550
+        },
+        {
+          "phase": "metrics",
+          "at": 1791931458752
+        },
+        {
+          "phase": "metrics",
+          "at": 1791931459980
+        },
+        {
+          "phase": "metrics",
+          "at": 1791931461153
+        }
+      ]
+    },
+    {
+      "seq": 26,
+      "kind": "result",
+      "at": 1791931462506,
+      "output": "outcome: rejected (no_improvement: worst ratio 0.9933 vs required 0.9900)\nguard limits (config version 1): every guarded metric other than the target is within its limit\nguard: ok, 1 files, 16 lines\nbuild: base ok, candidate ok\nequivalence: identical outputs\nmetric scalar_arith_ir: parent 363415006, candidate 360985014, ratio 0.9933\nmetric field_arith_ir: parent 297873599, candidate 297873599, ratio 1.0000",
+      "outcome": "rejected",
+      "steps": [
+        {
+          "step": "build",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 12517,
+          "timed_out": false,
+          "tail": "cp256r1 v0.0.0 (/work/src/lineage)\nwarning: value assigned to `u` is never read\n   --> ../secp256r1/src/field.rs:435:29\n    |\n435 | ...                   u = [1, 0, 0, 0];\n    |                       ^\n    |\n    = help: maybe it is overwritten before being read?\n    = note: `#[warn(unused_assignments)]` on by default\n\nwarning: value assigned to `u` is never read\n   --> ../secp256r1/src/field.rs:506:17\n    |\n506 |                 u = [un as u64, (un >> 64) as u64, 0, 0];\n    |                 ^\n    |\n    = help: maybe it is overwritten before being read?\n\n   Compiling elliptic-curve v0.13.8\n   Compiling primeorder v0.13.6\n   Compiling p256 v0.13.2\nwarning: `lineage-secp256r1` (lib) generated 2 warnings\nwarning: method `below` is never used\n  --> examples/lineage_support/rng.rs:21:12\n   |\n4  | impl Rng {\n   | -------- method in this implementation\n...\n21 |     pub fn below(&mut self, n: u64) -> u64 {\n   |            ^^^^^\n   |\n   = note: `#[warn(dead_code)]` on by default\n\nwarning: `lineage-secp256r1` (example \"lineage_bench\") generated 1 warning\nwarning: `lineage-secp256r1` (lib test) generated 2 warnings (2 duplicates)\n    Finished `release` profile [optimized] target(s) in 12.22s\n"
+        },
+        {
+          "step": "build",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 12611,
+          "timed_out": false,
+          "tail": "cp256r1 v0.0.0 (/work/src/lineage)\nwarning: value assigned to `u` is never read\n   --> ../secp256r1/src/field.rs:435:29\n    |\n435 | ...                   u = [1, 0, 0, 0];\n    |                       ^\n    |\n    = help: maybe it is overwritten before being read?\n    = note: `#[warn(unused_assignments)]` on by default\n\nwarning: value assigned to `u` is never read\n   --> ../secp256r1/src/field.rs:506:17\n    |\n506 |                 u = [un as u64, (un >> 64) as u64, 0, 0];\n    |                 ^\n    |\n    = help: maybe it is overwritten before being read?\n\n   Compiling elliptic-curve v0.13.8\n   Compiling primeorder v0.13.6\n   Compiling p256 v0.13.2\nwarning: `lineage-secp256r1` (lib) generated 2 warnings\nwarning: method `below` is never used\n  --> examples/lineage_support/rng.rs:21:12\n   |\n4  | impl Rng {\n   | -------- method in this implementation\n...\n21 |     pub fn below(&mut self, n: u64) -> u64 {\n   |            ^^^^^\n   |\n   = note: `#[warn(dead_code)]` on by default\n\nwarning: `lineage-secp256r1` (example \"lineage_bench\") generated 1 warning\nwarning: `lineage-secp256r1` (lib test) generated 2 warnings (2 duplicates)\n    Finished `release` profile [optimized] target(s) in 12.34s\n"
+        },
+        {
+          "step": "test",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 268,
+          "timed_out": false,
+          "tail": "p::tests::multi_scalar_mul_rejects_length_mismatch ... ok\ntest group::tests::parses_and_serializes_compressed ... ok\ntest group::tests::parses_and_serializes_generator ... ok\ntest group::tests::parses_and_serializes_little_endian ... ok\ntest group::tests::projective_equality_ignores_jacobian_scale ... ok\ntest group::tests::rejects_invalid_compressed_prefixes ... ok\ntest group::tests::scalar_mul_matches_p256 ... ok\ntest group::tests::scalar_multiplication_rejects_non_canonical_scalars ... ok\ntest group::tests::fixed_base_scalar_mul_matches_p256 ... ok\ntest group::tests::unchecked_scalar_multiplication_accepts_non_canonical_scalars ... ok\ntest group::tests::zero_scalars_and_cancelling_msm_return_identity ... ok\ntest scalar::tests::arithmetic_matches_p256 ... ok\ntest scalar::tests::is_canonical_agrees_with_from_bytes ... ok\ntest scalar::tests::parses_little_endian_scalars ... ok\ntest scalar::tests::reduced_bytes_match_p256 ... ok\ntest scalar::tests::rejects_non_canonical_order ... ok\ntest scalar::tests::round_trips ... ok\ntest scalar::tests::arithmetic_matches_p256_for_many_samples ... ok\n\ntest result: ok. 36 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s\n\n"
+        },
+        {
+          "step": "test",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 272,
+          "timed_out": false,
+          "tail": "p::tests::multi_scalar_mul_rejects_length_mismatch ... ok\ntest group::tests::parses_and_serializes_compressed ... ok\ntest group::tests::parses_and_serializes_generator ... ok\ntest group::tests::parses_and_serializes_little_endian ... ok\ntest group::tests::projective_equality_ignores_jacobian_scale ... ok\ntest group::tests::rejects_invalid_compressed_prefixes ... ok\ntest group::tests::scalar_mul_matches_p256 ... ok\ntest group::tests::scalar_multiplication_rejects_non_canonical_scalars ... ok\ntest group::tests::fixed_base_scalar_mul_matches_p256 ... ok\ntest group::tests::unchecked_scalar_multiplication_accepts_non_canonical_scalars ... ok\ntest scalar::tests::arithmetic_matches_p256 ... ok\ntest group::tests::zero_scalars_and_cancelling_msm_return_identity ... ok\ntest scalar::tests::is_canonical_agrees_with_from_bytes ... ok\ntest scalar::tests::parses_little_endian_scalars ... ok\ntest scalar::tests::reduced_bytes_match_p256 ... ok\ntest scalar::tests::rejects_non_canonical_order ... ok\ntest scalar::tests::round_trips ... ok\ntest scalar::tests::arithmetic_matches_p256_for_many_samples ... ok\n\ntest result: ok. 36 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s\n\n"
+        },
+        {
+          "step": "equivalence",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 1209,
+          "timed_out": false,
+          "tail": "field 22032 b5be63259e5deb009417844a9402443c\nscalar 18001 95ecf8fc5403722feb08f2ea99ac653a\nencoding 10436 9064f9e76d73ef4b0b31232b6bfb37a2\ngroup 12001 7813121a4b76031593a30f8afca94714\nmul 2618 aacacb08c52df05ec8ea6d2b047dd00b\n"
+        },
+        {
+          "step": "equivalence",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 1213,
+          "timed_out": false,
+          "tail": "field 22032 b5be63259e5deb009417844a9402443c\nscalar 18001 95ecf8fc5403722feb08f2ea99ac653a\nencoding 10436 9064f9e76d73ef4b0b31232b6bfb37a2\ngroup 12001 7813121a4b76031593a30f8afca94714\nmul 2618 aacacb08c52df05ec8ea6d2b047dd00b\n"
+        },
+        {
+          "step": "metrics",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 1202,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: lineage/target/release/examples/lineage_bench scalar_arith 4125e5bb6006ce83\n==7== \n==7== \n==7== I   refs:      363,415,006\n"
+        },
+        {
+          "step": "metrics",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 1228,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: lineage/target/release/examples/lineage_bench scalar_arith 4125e5bb6006ce83\n==7== \n==7== \n==7== I   refs:      360,985,014\n"
+        },
+        {
+          "step": "metrics",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 1173,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: lineage/target/release/examples/lineage_bench field_arith 4125e5bb6006ce83\n==7== \n==7== \n==7== I   refs:      297,873,599\n"
+        },
+        {
+          "step": "metrics",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 1172,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: lineage/target/release/examples/lineage_bench field_arith 4125e5bb6006ce83\n==7== \n==7== \n==7== I   refs:      297,873,599\n"
+        }
+      ]
+    },
+    {
+      "seq": 27,
+      "kind": "read",
+      "path": "secp256r1/src/scalar.rs",
+      "start_line": 429,
+      "end_line": 436,
+      "content_sha256": "d668f50cddf7873dce41a7bde76bbc8fdf8874b8359211b346b9988d725892f9",
+      "at": 1791931467456
+    },
+    {
+      "seq": 28,
+      "kind": "edit",
+      "path": "secp256r1/src/scalar.rs",
+      "start_line": 431,
+      "end_line": 501,
+      "lines_before": 71,
+      "lines_after": 30,
+      "at": 1791931481584,
+      "diff": "--- a/secp256r1/src/scalar.rs\n+++ b/secp256r1/src/scalar.rs\n@@ -431,71 +431,30 @@\n-    let a0 = a[0] as u128;\n-    let a1 = a[1] as u128;\n-    let a2 = a[2] as u128;\n-    let a3 = a[3] as u128;\n-\n-    let p00 = a0 * a0;\n-    let w0 = p00 as u64;\n-    let mut acc = p00 >> 64;\n-    let mut top = 0u64;\n-\n-    let p01 = a0 * a1;\n-    top += (p01 >> 127) as u64;\n-    let (sum, overflow) = acc.overflowing_add(p01 << 1);\n-    let w1 = sum as u64;\n-    acc = sum >> 64;\n-    top += u64::from(overflow);\n-\n-    acc |= (top as u128) << 64;\n-    top = 0;\n-    let p02 = a0 * a2;\n-    top += (p02 >> 127) as u64;\n-    let (sum, overflow) = acc.overflowing_add(p02 << 1);\n-    acc = sum;\n-    top += u64::from(overflow);\n-    let (sum, overflow) = acc.overflowing_add(a1 * a1);\n-    let w2 = sum as u64;\n-    acc = sum >> 64;\n-    top += u64::from(overflow);\n-\n-    acc |= (top as u128) << 64;\n-    top = 0;\n-    let p03 = a0 * a3;\n-    top += (p03 >> 127) as u64;\n-    let (sum, overflow) = acc.overflowing_add(p03 << 1);\n-    acc = sum;\n-    top += u64::from(overflow);\n-    let p12 = a1 * a2;\n-    top += (p12 >> 127) as u64;\n-    let (sum, overflow) = acc.overflowing_add(p12 << 1);\n-    let w3 = sum as u64;\n-    acc = sum >> 64;\n-    top += u64::from(overflow);\n-\n-    acc |= (top as u128) << 64;\n-    top = 0;\n-    let p13 = a1 * a3;\n-    top += (p13 >> 127) as u64;\n-    let (sum, overflow) = acc.overflowing_add(p13 << 1);\n-    acc = sum;\n-    top += u64::from(overflow);\n-    let (sum, overflow) = acc.overflowing_add(a2 * a2);\n-    let w4 = sum as u64;\n-    acc = sum >> 64;\n-    top += u64::from(overflow);\n-\n-    acc |= (top as u128) << 64;\n-    top = 0;\n-    let p23 = a2 * a3;\n-    top += (p23 >> 127) as u64;\n-    let (sum, overflow) = acc.overflowing_add(p23 << 1);\n-    let w5 = sum as u64;\n-    acc = sum >> 64;\n-    top += u64::from(overflow);\n-\n-    acc |= (top as u128) << 64;\n-    let (sum, overflow) = acc.overflowing_add(a3 * a3);\n-    let w6 = sum as u64;\n-    let w7 = (sum >> 64) as u64;\n-    debug_assert!(!overflow);\n-\n-    montgomery_reduce_words\n+    // Off-diagonal products a_i * a_j for i < j.\n+    let (w1, carry) = mac(0, a[0], a[1], 0);\n+    let (w2, carry) = mac(0, a[0], a[2], carry);\n+    let (w3, w4) = mac(0, a[0], a[3], carry);\n+\n+    let (w3, carry) = mac(w3, a[1], a[2], 0);\n+    let (w4, w5) = mac(w4, a[1], a[3], carry);\n+\n+    let (w5, w6) = mac(w5, a[2], a[3], 0);\n+\n+    // Double them.\n+    let w7 = w6 >> 63;\n+    let w6 = (w6 << 1) | (w5 >> 63);\n+    let w5 = (w5 << 1) | (w4 >> 63);\n+    let w4 = (w4 << 1) | (w3 >> 63);\n+    let w3 = (w3 << 1) | (w2 >> 63);\n+    let w2 = (w2 << 1) | (w1 >> 63);\n+    let w1 = w1 << 1;\n+\n+    // Add the diagonal squares.\n+    let (w0, carry) = mac(0, a[0], a[0], 0);\n+    let (w1, carry) = adc(w1, 0, carry);\n+    let (w2, carry) = mac(w2, a[1], a[1], carry);\n+    let (w3, carry) = adc(w3, 0, carry);\n+    let (w4, carry) = mac(w4, a[2], a[2], carry);\n+    let (w5, carry) = adc(w5, 0, carry);\n+    let (w6, carry) = mac(w6, a[3], a[3], carry);\n+    let (w7, _) = adc(w7, 0, carry);\n+\n+    montgomery_reduce_words"
+    },
+    {
+      "seq": 29,
+      "kind": "evaluate",
+      "target": "scalar_arith_ir",
+      "eval_kind": "perf",
+      "at": 1791931481601,
+      "phases": [
+        {
+          "phase": "prepare",
+          "at": 1791931482936
+        },
+        {
+          "phase": "build",
+          "at": 1791931483663
+        },
+        {
+          "phase": "build",
+          "at": 1791931483664
+        },
+        {
+          "phase": "test",
+          "at": 1791931495847
+        },
+        {
+          "phase": "test",
+          "at": 1791931496197
+        },
+        {
+          "phase": "equivalence",
+          "at": 1791931496484
+        },
+        {
+          "phase": "equivalence",
+          "at": 1791931496484
+        },
+        {
+          "phase": "metrics",
+          "at": 1791931497650
+        },
+        {
+          "phase": "metrics",
+          "at": 1791931498842
+        },
+        {
+          "phase": "metrics",
+          "at": 1791931500022
+        },
+        {
+          "phase": "metrics",
+          "at": 1791931501167
+        }
+      ]
+    },
+    {
+      "seq": 41,
+      "kind": "result",
+      "at": 1791931502501,
+      "output": "outcome: rejected (no_improvement: worst ratio 0.9940 vs required 0.9900)\nguard limits (config version 1): every guarded metric other than the target is within its limit\nguard: ok, 1 files, 113 lines\nbuild: base ok, candidate ok\nequivalence: identical outputs\nmetric scalar_arith_ir: parent 363415006, candidate 361240954, ratio 0.9940\nmetric field_arith_ir: parent 297873599, candidate 297873599, ratio 1.0000",
+      "outcome": "rejected",
+      "steps": [
+        {
+          "step": "build",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 12097,
+          "timed_out": false,
+          "tail": "cp256r1 v0.0.0 (/work/src/lineage)\nwarning: value assigned to `u` is never read\n   --> ../secp256r1/src/field.rs:435:29\n    |\n435 | ...                   u = [1, 0, 0, 0];\n    |                       ^\n    |\n    = help: maybe it is overwritten before being read?\n    = note: `#[warn(unused_assignments)]` on by default\n\nwarning: value assigned to `u` is never read\n   --> ../secp256r1/src/field.rs:506:17\n    |\n506 |                 u = [un as u64, (un >> 64) as u64, 0, 0];\n    |                 ^\n    |\n    = help: maybe it is overwritten before being read?\n\n   Compiling elliptic-curve v0.13.8\n   Compiling primeorder v0.13.6\n   Compiling p256 v0.13.2\nwarning: `lineage-secp256r1` (lib) generated 2 warnings\nwarning: method `below` is never used\n  --> examples/lineage_support/rng.rs:21:12\n   |\n4  | impl Rng {\n   | -------- method in this implementation\n...\n21 |     pub fn below(&mut self, n: u64) -> u64 {\n   |            ^^^^^\n   |\n   = note: `#[warn(dead_code)]` on by default\n\nwarning: `lineage-secp256r1` (lib test) generated 2 warnings (2 duplicates)\nwarning: `lineage-secp256r1` (example \"lineage_bench\") generated 1 warning\n    Finished `release` profile [optimized] target(s) in 11.77s\n"
+        },
+        {
+          "step": "build",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 12121,
+          "timed_out": false,
+          "tail": "cp256r1 v0.0.0 (/work/src/lineage)\nwarning: value assigned to `u` is never read\n   --> ../secp256r1/src/field.rs:435:29\n    |\n435 | ...                   u = [1, 0, 0, 0];\n    |                       ^\n    |\n    = help: maybe it is overwritten before being read?\n    = note: `#[warn(unused_assignments)]` on by default\n\nwarning: value assigned to `u` is never read\n   --> ../secp256r1/src/field.rs:506:17\n    |\n506 |                 u = [un as u64, (un >> 64) as u64, 0, 0];\n    |                 ^\n    |\n    = help: maybe it is overwritten before being read?\n\n   Compiling elliptic-curve v0.13.8\n   Compiling primeorder v0.13.6\n   Compiling p256 v0.13.2\nwarning: `lineage-secp256r1` (lib) generated 2 warnings\nwarning: method `below` is never used\n  --> examples/lineage_support/rng.rs:21:12\n   |\n4  | impl Rng {\n   | -------- method in this implementation\n...\n21 |     pub fn below(&mut self, n: u64) -> u64 {\n   |            ^^^^^\n   |\n   = note: `#[warn(dead_code)]` on by default\n\nwarning: `lineage-secp256r1` (example \"lineage_bench\") generated 1 warning\nwarning: `lineage-secp256r1` (lib test) generated 2 warnings (2 duplicates)\n    Finished `release` profile [optimized] target(s) in 11.85s\n"
+        },
+        {
+          "step": "test",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 270,
+          "timed_out": false,
+          "tail": "p::tests::multi_scalar_mul_rejects_length_mismatch ... ok\ntest group::tests::parses_and_serializes_compressed ... ok\ntest group::tests::parses_and_serializes_generator ... ok\ntest group::tests::parses_and_serializes_little_endian ... ok\ntest group::tests::projective_equality_ignores_jacobian_scale ... ok\ntest group::tests::rejects_invalid_compressed_prefixes ... ok\ntest group::tests::scalar_mul_matches_p256 ... ok\ntest group::tests::scalar_multiplication_rejects_non_canonical_scalars ... ok\ntest group::tests::fixed_base_scalar_mul_matches_p256 ... ok\ntest group::tests::unchecked_scalar_multiplication_accepts_non_canonical_scalars ... ok\ntest scalar::tests::arithmetic_matches_p256 ... ok\ntest group::tests::zero_scalars_and_cancelling_msm_return_identity ... ok\ntest scalar::tests::is_canonical_agrees_with_from_bytes ... ok\ntest scalar::tests::parses_little_endian_scalars ... ok\ntest scalar::tests::reduced_bytes_match_p256 ... ok\ntest scalar::tests::rejects_non_canonical_order ... ok\ntest scalar::tests::round_trips ... ok\ntest scalar::tests::arithmetic_matches_p256_for_many_samples ... ok\n\ntest result: ok. 36 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s\n\n"
+        },
+        {
+          "step": "test",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 269,
+          "timed_out": false,
+          "tail": "p::tests::multi_scalar_mul_rejects_length_mismatch ... ok\ntest group::tests::parses_and_serializes_compressed ... ok\ntest group::tests::parses_and_serializes_generator ... ok\ntest group::tests::parses_and_serializes_little_endian ... ok\ntest group::tests::projective_equality_ignores_jacobian_scale ... ok\ntest group::tests::rejects_invalid_compressed_prefixes ... ok\ntest group::tests::scalar_mul_matches_p256 ... ok\ntest group::tests::scalar_multiplication_rejects_non_canonical_scalars ... ok\ntest group::tests::fixed_base_scalar_mul_matches_p256 ... ok\ntest group::tests::unchecked_scalar_multiplication_accepts_non_canonical_scalars ... ok\ntest scalar::tests::arithmetic_matches_p256 ... ok\ntest group::tests::zero_scalars_and_cancelling_msm_return_identity ... ok\ntest scalar::tests::is_canonical_agrees_with_from_bytes ... ok\ntest scalar::tests::parses_little_endian_scalars ... ok\ntest scalar::tests::reduced_bytes_match_p256 ... ok\ntest scalar::tests::rejects_non_canonical_order ... ok\ntest scalar::tests::round_trips ... ok\ntest scalar::tests::arithmetic_matches_p256_for_many_samples ... ok\n\ntest result: ok. 36 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s\n\n"
+        },
+        {
+          "step": "equivalence",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 1164,
+          "timed_out": false,
+          "tail": "field 22032 b5be63259e5deb009417844a9402443c\nscalar 18001 95ecf8fc5403722feb08f2ea99ac653a\nencoding 10436 9064f9e76d73ef4b0b31232b6bfb37a2\ngroup 12001 7813121a4b76031593a30f8afca94714\nmul 2618 aacacb08c52df05ec8ea6d2b047dd00b\n"
+        },
+        {
+          "step": "equivalence",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 1164,
+          "timed_out": false,
+          "tail": "field 22032 b5be63259e5deb009417844a9402443c\nscalar 18001 95ecf8fc5403722feb08f2ea99ac653a\nencoding 10436 9064f9e76d73ef4b0b31232b6bfb37a2\ngroup 12001 7813121a4b76031593a30f8afca94714\nmul 2618 aacacb08c52df05ec8ea6d2b047dd00b\n"
+        },
+        {
+          "step": "metrics",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 1191,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: lineage/target/release/examples/lineage_bench scalar_arith 4125e5bb6006ce83\n==7== \n==7== \n==7== I   refs:      363,415,006\n"
+        },
+        {
+          "step": "metrics",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 1174,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: lineage/target/release/examples/lineage_bench scalar_arith 4125e5bb6006ce83\n==7== \n==7== \n==7== I   refs:      361,240,954\n"
+        },
+        {
+          "step": "metrics",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 1149,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: lineage/target/release/examples/lineage_bench field_arith 4125e5bb6006ce83\n==7== \n==7== \n==7== I   refs:      297,873,599\n"
+        },
+        {
+          "step": "metrics",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 1195,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: lineage/target/release/examples/lineage_bench field_arith 4125e5bb6006ce83\n==7== \n==7== \n==7== I   refs:      297,873,599\n"
+        }
+      ]
+    },
+    {
+      "seq": 42,
+      "kind": "edit",
+      "path": "secp256r1/src/scalar.rs",
+      "start_line": 431,
+      "end_line": 460,
+      "lines_before": 30,
+      "lines_after": 71,
+      "at": 1791931556195,
+      "diff": "--- a/secp256r1/src/scalar.rs\n+++ b/secp256r1/src/scalar.rs\n@@ -431,30 +431,71 @@\n-    // Off-diagonal products a_i * a_j for i < j.\n-    let (w1, carry) = mac(0, a[0], a[1], 0);\n-    let (w2, carry) = mac(0, a[0], a[2], carry);\n-    let (w3, w4) = mac(0, a[0], a[3], carry);\n-\n-    let (w3, carry) = mac(w3, a[1], a[2], 0);\n-    let (w4, w5) = mac(w4, a[1], a[3], carry);\n-\n-    let (w5, w6) = mac(w5, a[2], a[3], 0);\n-\n-    // Double them.\n-    let w7 = w6 >> 63;\n-    let w6 = (w6 << 1) | (w5 >> 63);\n-    let w5 = (w5 << 1) | (w4 >> 63);\n-    let w4 = (w4 << 1) | (w3 >> 63);\n-    let w3 = (w3 << 1) | (w2 >> 63);\n-    let w2 = (w2 << 1) | (w1 >> 63);\n-    let w1 = w1 << 1;\n-\n-    // Add the diagonal squares.\n-    let (w0, carry) = mac(0, a[0], a[0], 0);\n-    let (w1, carry) = adc(w1, 0, carry);\n-    let (w2, carry) = mac(w2, a[1], a[1], carry);\n-    let (w3, carry) = adc(w3, 0, carry);\n-    let (w4, carry) = mac(w4, a[2], a[2], carry);\n-    let (w5, carry) = adc(w5, 0, carry);\n-    let (w6, carry) = mac(w6, a[3], a[3], carry);\n-    let (w7, _) = adc(w7, 0, carry);\n-\n-    montgomery_reduce_words\n+    let a0 = a[0] as u128;\n+    let a1 = a[1] as u128;\n+    let a2 = a[2] as u128;\n+    let a3 = a[3] as u128;\n+\n+    let p00 = a0 * a0;\n+    let w0 = p00 as u64;\n+    let mut acc = p00 >> 64;\n+    let mut top = 0u64;\n+\n+    let p01 = a0 * a1;\n+    top += (p01 >> 127) as u64;\n+    let (sum, overflow) = acc.overflowing_add(p01 << 1);\n+    let w1 = sum as u64;\n+    acc = sum >> 64;\n+    top += u64::from(overflow);\n+\n+    acc |= (top as u128) << 64;\n+    top = 0;\n+    let p02 = a0 * a2;\n+    top += (p02 >> 127) as u64;\n+    let (sum, overflow) = acc.overflowing_add(p02 << 1);\n+    acc = sum;\n+    top += u64::from(overflow);\n+    let (sum, overflow) = acc.overflowing_add(a1 * a1);\n+    let w2 = sum as u64;\n+    acc = sum >> 64;\n+    top += u64::from(overflow);\n+\n+    acc |= (top as u128) << 64;\n+    top = 0;\n+    let p03 = a0 * a3;\n+    top += (p03 >> 127) as u64;\n+    let (sum, overflow) = acc.overflowing_add(p03 << 1);\n+    acc = sum;\n+    top += u64::from(overflow);\n+    let p12 = a1 * a2;\n+    top += (p12 >> 127) as u64;\n+    let (sum, overflow) = acc.overflowing_add(p12 << 1);\n+    let w3 = sum as u64;\n+    acc = sum >> 64;\n+    top += u64::from(overflow);\n+\n+    acc |= (top as u128) << 64;\n+    top = 0;\n+    let p13 = a1 * a3;\n+    top += (p13 >> 127) as u64;\n+    let (sum, overflow) = acc.overflowing_add(p13 << 1);\n+    acc = sum;\n+    top += u64::from(overflow);\n+    let (sum, overflow) = acc.overflowing_add(a2 * a2);\n+    let w4 = sum as u64;\n+    acc = sum >> 64;\n+    top += u64::from(overflow);\n+\n+    acc |= (top as u128) << 64;\n+    top = 0;\n+    let p23 = a2 * a3;\n+    top += (p23 >> 127) as u64;\n+    let (sum, overflow) = acc.overflowing_add(p23 << 1);\n+    let w5 = sum as u64;\n+    acc = sum >> 64;\n+    top += u64::from(overflow);\n+\n+    acc |= (top as u128) << 64;\n+    let (sum, overflow) = acc.overflowing_add(a3 * a3);\n+    let w6 = sum as u64;\n+    let w7 = (sum >> 64) as u64;\n+    debug_assert!(!overflow);\n+\n+    montgomery_reduce_words"
+    },
+    {
+      "seq": 43,
+      "kind": "note",
+      "at": 1791931567878,
+      "text": "Next, the four `mac(_, k, MODULUS[2], _)` sites become a helper that uses k·(2^64−1) = (k<<64) − k."
+    },
+    {
+      "seq": 44,
+      "kind": "edit",
+      "path": "secp256r1/src/scalar.rs",
+      "start_line": 531,
+      "end_line": 533,
+      "lines_before": 3,
+      "lines_after": 3,
+      "at": 1791931567879,
+      "diff": "--- a/secp256r1/src/scalar.rs\n+++ b/secp256r1/src/scalar.rs\n@@ -531,3 +531,3 @@\n-    let (r2, carry) = mac(r2, k, MODULUS[2], carry);\n-    let (r3, carry) = mac(r3, k, MODULUS[3], carry);\n-    let (r4, carry2) = adc(r4, 0, carry);\n+    let (r2, carry) = mac_all_ones(r2, k, carry);\n+    let (r3, carry) = mac(r3, k, MODULUS[3], carry);\n+    let (r4, carry2) = adc(r4, 0, carry);"
+    },
+    {
+      "seq": 45,
+      "kind": "edit",
+      "path": "secp256r1/src/scalar.rs",
+      "start_line": 538,
+      "end_line": 538,
+      "lines_before": 1,
+      "lines_after": 1,
+      "at": 1791931567881,
+      "diff": "--- a/secp256r1/src/scalar.rs\n+++ b/secp256r1/src/scalar.rs\n@@ -538,1 +538,1 @@\n-    let (r3, carry) = mac(r3, k, MODULUS[2], carry);\n+    let (r3, carry) = mac_all_ones(r3, k, carry);"
+    },
+    {
+      "seq": 46,
+      "kind": "edit",
+      "path": "secp256r1/src/scalar.rs",
+      "start_line": 545,
+      "end_line": 547,
+      "lines_before": 3,
+      "lines_after": 3,
+      "at": 1791931567881,
+      "diff": "--- a/secp256r1/src/scalar.rs\n+++ b/secp256r1/src/scalar.rs\n@@ -545,3 +545,3 @@\n-    let (r4, carry) = mac(r4, k, MODULUS[2], carry);\n-    let (r5, carry) = mac(r5, k, MODULUS[3], carry);\n-    let (r6, carry2)\n+    let (r4, carry) = mac_all_ones(r4, k, carry);\n+    let (r5, carry) = mac(r5, k, MODULUS[3], carry);\n+    let (r6, carry2)"
+    },
+    {
+      "seq": 47,
+      "kind": "edit",
+      "path": "secp256r1/src/scalar.rs",
+      "start_line": 552,
+      "end_line": 552,
+      "lines_before": 1,
+      "lines_after": 1,
+      "at": 1791931567884,
+      "diff": "--- a/secp256r1/src/scalar.rs\n+++ b/secp256r1/src/scalar.rs\n@@ -552,1 +552,1 @@\n-    let (r5, carry) = mac(r5, k, MODULUS[2], carry);\n+    let (r5, carry) = mac_all_ones(r5, k, carry);"
+    },
+    {
+      "seq": 48,
+      "kind": "edit",
+      "path": "secp256r1/src/scalar.rs",
+      "start_line": 567,
+      "end_line": 568,
+      "lines_before": 2,
+      "lines_after": 10,
+      "at": 1791931567884,
+      "diff": "--- a/secp256r1/src/scalar.rs\n+++ b/secp256r1/src/scalar.rs\n@@ -567,2 +567,10 @@\n-#[inline(always)]\n-fn reduce_wide(\n+/// `mac(a, k, MODULUS[2], carry)` with `MODULUS[2] = 2^64 - 1`, computed as\n+/// `a + carry + k * 2^64 - k`.\n+#[inline(always)]\n+fn mac_all_ones(a: u64, k: u64, carry: u64) -> (u64, u64) {\n+    let sum = (((k as u128) << 64) - (k as u128)) + (a as u128) + (carry as u128);\n+    (sum as u64, (sum >> 64) as u64)\n+}\n+\n+#[inline(always)]\n+fn reduce_wide("
+    },
+    {
+      "seq": 49,
+      "kind": "search",
+      "query": "MODULUS\\[2\\], carry|mac_all_ones\\(",
+      "matches": 6,
+      "at": 1791931567902
+    },
+    {
+      "seq": 50,
+      "kind": "note",
+      "at": 1791931571720,
+      "text": "I checked the bound: (2^64−1)·k + a + carry ≤ 2^128 − 1, so nothing overflows, debug builds included. Evaluating now."
+    },
+    {
+      "seq": 51,
+      "kind": "evaluate",
+      "target": "scalar_arith_ir",
+      "eval_kind": "perf",
+      "at": 1791931571736,
+      "phases": [
+        {
+          "phase": "prepare",
+          "at": 1791931573062
+        },
+        {
+          "phase": "build",
+          "at": 1791931573790
+        },
+        {
+          "phase": "build",
+          "at": 1791931573791
+        },
+        {
+          "phase": "test",
+          "at": 1791931586218
+        },
+        {
+          "phase": "test",
+          "at": 1791931586581
+        },
+        {
+          "phase": "equivalence",
+          "at": 1791931586882
+        },
+        {
+          "phase": "equivalence",
+          "at": 1791931586882
+        },
+        {
+          "phase": "metrics",
+          "at": 1791931588077
+        },
+        {
+          "phase": "metrics",
+          "at": 1791931589277
+        },
+        {
+          "phase": "metrics",
+          "at": 1791931590572
+        },
+        {
+          "phase": "metrics",
+          "at": 1791931591802
+        }
+      ]
+    },
+    {
+      "seq": 63,
+      "kind": "result",
+      "at": 1791931593120,
+      "output": "outcome: rejected (no_improvement: worst ratio 0.9933 vs required 0.9900)\nguard limits (config version 1): every guarded metric other than the target is within its limit\nguard: ok, 1 files, 32 lines\nbuild: base ok, candidate ok\nequivalence: identical outputs\nmetric scalar_arith_ir: parent 363415006, candidate 360985014, ratio 0.9933\nmetric field_arith_ir: parent 297873599, candidate 297873599, ratio 1.0000",
+      "outcome": "rejected",
+      "steps": [
+        {
+          "step": "build",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 12142,
+          "timed_out": false,
+          "tail": "cp256r1 v0.0.0 (/work/src/lineage)\nwarning: value assigned to `u` is never read\n   --> ../secp256r1/src/field.rs:435:29\n    |\n435 | ...                   u = [1, 0, 0, 0];\n    |                       ^\n    |\n    = help: maybe it is overwritten before being read?\n    = note: `#[warn(unused_assignments)]` on by default\n\nwarning: value assigned to `u` is never read\n   --> ../secp256r1/src/field.rs:506:17\n    |\n506 |                 u = [un as u64, (un >> 64) as u64, 0, 0];\n    |                 ^\n    |\n    = help: maybe it is overwritten before being read?\n\n   Compiling elliptic-curve v0.13.8\n   Compiling primeorder v0.13.6\n   Compiling p256 v0.13.2\nwarning: `lineage-secp256r1` (lib) generated 2 warnings\nwarning: method `below` is never used\n  --> examples/lineage_support/rng.rs:21:12\n   |\n4  | impl Rng {\n   | -------- method in this implementation\n...\n21 |     pub fn below(&mut self, n: u64) -> u64 {\n   |            ^^^^^\n   |\n   = note: `#[warn(dead_code)]` on by default\n\nwarning: `lineage-secp256r1` (example \"lineage_bench\") generated 1 warning\nwarning: `lineage-secp256r1` (lib test) generated 2 warnings (2 duplicates)\n    Finished `release` profile [optimized] target(s) in 11.87s\n"
+        },
+        {
+          "step": "build",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 12363,
+          "timed_out": false,
+          "tail": "cp256r1 v0.0.0 (/work/src/lineage)\nwarning: value assigned to `u` is never read\n   --> ../secp256r1/src/field.rs:435:29\n    |\n435 | ...                   u = [1, 0, 0, 0];\n    |                       ^\n    |\n    = help: maybe it is overwritten before being read?\n    = note: `#[warn(unused_assignments)]` on by default\n\nwarning: value assigned to `u` is never read\n   --> ../secp256r1/src/field.rs:506:17\n    |\n506 |                 u = [un as u64, (un >> 64) as u64, 0, 0];\n    |                 ^\n    |\n    = help: maybe it is overwritten before being read?\n\n   Compiling elliptic-curve v0.13.8\n   Compiling primeorder v0.13.6\n   Compiling p256 v0.13.2\nwarning: `lineage-secp256r1` (lib) generated 2 warnings\nwarning: method `below` is never used\n  --> examples/lineage_support/rng.rs:21:12\n   |\n4  | impl Rng {\n   | -------- method in this implementation\n...\n21 |     pub fn below(&mut self, n: u64) -> u64 {\n   |            ^^^^^\n   |\n   = note: `#[warn(dead_code)]` on by default\n\nwarning: `lineage-secp256r1` (example \"lineage_bench\") generated 1 warning\nwarning: `lineage-secp256r1` (lib test) generated 2 warnings (2 duplicates)\n    Finished `release` profile [optimized] target(s) in 12.10s\n"
+        },
+        {
+          "step": "test",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 285,
+          "timed_out": false,
+          "tail": "p::tests::multi_scalar_mul_rejects_length_mismatch ... ok\ntest group::tests::parses_and_serializes_compressed ... ok\ntest group::tests::parses_and_serializes_generator ... ok\ntest group::tests::parses_and_serializes_little_endian ... ok\ntest group::tests::projective_equality_ignores_jacobian_scale ... ok\ntest group::tests::rejects_invalid_compressed_prefixes ... ok\ntest group::tests::scalar_mul_matches_p256 ... ok\ntest group::tests::scalar_multiplication_rejects_non_canonical_scalars ... ok\ntest group::tests::fixed_base_scalar_mul_matches_p256 ... ok\ntest group::tests::unchecked_scalar_multiplication_accepts_non_canonical_scalars ... ok\ntest scalar::tests::arithmetic_matches_p256 ... ok\ntest group::tests::zero_scalars_and_cancelling_msm_return_identity ... ok\ntest scalar::tests::is_canonical_agrees_with_from_bytes ... ok\ntest scalar::tests::parses_little_endian_scalars ... ok\ntest scalar::tests::reduced_bytes_match_p256 ... ok\ntest scalar::tests::rejects_non_canonical_order ... ok\ntest scalar::tests::round_trips ... ok\ntest scalar::tests::arithmetic_matches_p256_for_many_samples ... ok\n\ntest result: ok. 36 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s\n\n"
+        },
+        {
+          "step": "test",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 279,
+          "timed_out": false,
+          "tail": "p::tests::multi_scalar_mul_rejects_length_mismatch ... ok\ntest group::tests::parses_and_serializes_compressed ... ok\ntest group::tests::parses_and_serializes_generator ... ok\ntest group::tests::parses_and_serializes_little_endian ... ok\ntest group::tests::projective_equality_ignores_jacobian_scale ... ok\ntest group::tests::rejects_invalid_compressed_prefixes ... ok\ntest group::tests::scalar_mul_matches_p256 ... ok\ntest group::tests::scalar_multiplication_rejects_non_canonical_scalars ... ok\ntest group::tests::fixed_base_scalar_mul_matches_p256 ... ok\ntest group::tests::unchecked_scalar_multiplication_accepts_non_canonical_scalars ... ok\ntest scalar::tests::arithmetic_matches_p256 ... ok\ntest group::tests::zero_scalars_and_cancelling_msm_return_identity ... ok\ntest scalar::tests::is_canonical_agrees_with_from_bytes ... ok\ntest scalar::tests::parses_little_endian_scalars ... ok\ntest scalar::tests::reduced_bytes_match_p256 ... ok\ntest scalar::tests::rejects_non_canonical_order ... ok\ntest scalar::tests::round_trips ... ok\ntest scalar::tests::arithmetic_matches_p256_for_many_samples ... ok\n\ntest result: ok. 36 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s\n\n"
+        },
+        {
+          "step": "equivalence",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 1175,
+          "timed_out": false,
+          "tail": "field 22032 b5be63259e5deb009417844a9402443c\nscalar 18001 95ecf8fc5403722feb08f2ea99ac653a\nencoding 10436 9064f9e76d73ef4b0b31232b6bfb37a2\ngroup 12001 7813121a4b76031593a30f8afca94714\nmul 2618 aacacb08c52df05ec8ea6d2b047dd00b\n"
+        },
+        {
+          "step": "equivalence",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 1187,
+          "timed_out": false,
+          "tail": "field 22032 b5be63259e5deb009417844a9402443c\nscalar 18001 95ecf8fc5403722feb08f2ea99ac653a\nencoding 10436 9064f9e76d73ef4b0b31232b6bfb37a2\ngroup 12001 7813121a4b76031593a30f8afca94714\nmul 2618 aacacb08c52df05ec8ea6d2b047dd00b\n"
+        },
+        {
+          "step": "metrics",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 1206,
+          "timed_out": false,
+          "tail": "==8== Cachegrind, a cache and branch-prediction profiler\n==8== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==8== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==8== Command: lineage/target/release/examples/lineage_bench scalar_arith 4125e5bb6006ce83\n==8== \n==8== \n==8== I   refs:      363,415,006\n"
+        },
+        {
+          "step": "metrics",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 1294,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: lineage/target/release/examples/lineage_bench scalar_arith 4125e5bb6006ce83\n==7== \n==7== \n==7== I   refs:      360,985,014\n"
+        },
+        {
+          "step": "metrics",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 1230,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: lineage/target/release/examples/lineage_bench field_arith 4125e5bb6006ce83\n==7== \n==7== \n==7== I   refs:      297,873,599\n"
+        },
+        {
+          "step": "metrics",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 1186,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: lineage/target/release/examples/lineage_bench field_arith 4125e5bb6006ce83\n==7== \n==7== \n==7== I   refs:      297,873,599\n"
+        }
+      ]
+    },
+    {
+      "seq": 64,
+      "kind": "give_up",
+      "at": 1791931596809,
+      "reason": "Best measured change: in montgomery_reduce_words in scalar.rs, the carry out of r_i + k*n0 is computed as hi(k*n0) + (r_i != 0). That gave scalar_arith_ir ratio 0.9933, with identical outputs, short of the 0.9900 bar. Adding a mac-chain square on top made it worse (0.9940). Replacing the multiply by n2 = 2^64-1 with a shift and subtract changed the count by 0 instructions, so LLVM already does this. I have no further concrete extension within budget."
+    }
+  ],
+  "candidate": null,
+  "replays": [],
+  "verdict": null,
+  "outcome": "no_candidate",
+  "effect": null,
+  "cost": {
+    "input_tokens": 4196,
+    "output_tokens": 16522,
+    "cache_read_tokens": 601304,
+    "cache_write_tokens": 62930,
+    "usd": 0.825152,
+    "sandbox_s": 97.006,
+    "source": "worker_report"
+  },
+  "reward": {
+    "v": 1,
+    "accepted": 0,
+    "effect": 0,
+    "fixed_tests": 0,
+    "effect_per_usd": 0,
+    "effect_per_sandbox_hour": 0,
+    "reverted": false,
+    "inputs": [
+      "outcome",
+      "cost.usd (worker_report)",
+      "cost.sandbox_s (worker_report)"
+    ]
+  },
+  "worker_outcome": "no candidate: the session stopped without submitting a change [stop: gave up; model calls: 15]",
+  "journal": {
+    "entry_id": "9b6a771c732e702a25d5ea0c4a758fcbdff58f45ab4274d1ce4ca8c06e64a780",
+    "text": "Tried three changes in secp256r1/src/scalar.rs, in montgomery_reduce_words and the square path. First, the carry out of r_i + k*n0 computed as hi(k*n0) + (r_i != 0). Second, that plus a mac-chain square. Third, the multiply by n2 = 2^64-1 replaced with a shift and subtract.\n\nThe carry trick took scalar_arith_ir from 363415006 to 360985014, ratio 0.9933, outputs identical. Rejected, the bar is 0.9900. Adding the mac-chain square gave 361240954, ratio 0.9940, worse than the carry trick alone. The n2 shift and subtract changed the count by 0 instructions. field_arith_ir stayed at 297873599 in every run. No candidate submitted.\n\nLLVM already lowers the all-ones multiply well. Carry handling in the reduction loop alone does not close the gap to 0.9900.\n\nNext: profile scalar_arith_ir by function before editing. Check invert and the mul path outside montgomery_reduce_words. Read the bench mix in lineage/examples/lineage_bench.rs to see which ops dominate.",
+    "created_at": 1791931606293,
+    "sig": "5YFNqDTuULFjTT8xVgCzUvsVvFKCstmG7HQfYeinA7BeA1uqD6pk4vSGk3PHct4yghFqat8jSMPofiiBw29mG2xN",
+    "signer": "5EfJVfkFkWtzzTTLMz38hsG41MzjE5CbEp4d2CLxP9s7"
+  },
+  "provenance": null,
+  "license": null,
+  "attribution": "Code excerpts from https://github.com/anza-xyz/cryptography at 3efe73c7395f735f073bd25162cdc2fb4333f570, copyright its authors; the licence was not determined (see the repository).",
+  "times": {
+    "started_at": 1791931366385,
+    "ended_at": 1791931596819,
+    "finalized_at": null,
+    "published_at": 1791931640067
+  },
+  "verify": {
+    "session": "/v1/sessions/5efca1b601a78d6de44925f205ff3179e3ff6577019b4aa64d40e7a1202ff34a",
+    "candidate": null,
+    "generation": null,
+    "provenance": null,
+    "journal": "/v1/agents/21i6QcVZC31twkqZc8mnT4yuwpmGDMh46zWuMJQTiEQb/journal?lineage=b7c3c37e27901c4c9a8005759db2180082e495c847c5bb4e4d85545753213024"
+  }
+}
