@@ -1,6 +1,6 @@
 # Lessons: anza-cryptography
 
-Lineage `92e06c95a332dd6c8f4e2be5187040ee4f375f60217aaff81ae25fa3c0f8e5ca` on [https://github.com/anza-xyz/cryptography](https://github.com/anza-xyz/cryptography) at `3efe73c7395f735f073bd25162cdc2fb4333f570`. 65 published attempts.
+Lineage `92e06c95a332dd6c8f4e2be5187040ee4f375f60217aaff81ae25fa3c0f8e5ca` on [https://github.com/anza-xyz/cryptography](https://github.com/anza-xyz/cryptography) at `3efe73c7395f735f073bd25162cdc2fb4333f570`. 66 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
@@ -16,13 +16,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:decode_ir
 
-- Attempts: 22 (3 rejected, 9 accepted, 10 no candidate)
+- Attempts: 23 (3 rejected, 9 accepted, 11 no candidate)
 - Best accepted effect: 17.73% (ratio 0.8227), episode `d87452637ca1`
 - Accepted effects: 17.73%, 14.23%, 4.04%, 3.71%, 3.44%, 3.04%, 2.59%, 1.70%, 1.36%
 - Why candidates failed: stale (1), apply_conflict (1), stale_conflict (1)
 - Files changed by accepted candidates: `secp256r1/src/field.rs`
 - Files changed by rejected candidates: `secp256r1/src/field.rs`
-- Median model spend per attempt: 0.4895 USD (over 22 attempts with a recorded cost)
+- Median model spend per attempt: 0.5521 USD (over 23 attempts with a recorded cost)
 
 ## Target perf:msm_ir
 
@@ -37,6 +37,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I tried two changes to decode_ir in secp256r1/src/field.rs. First, I moved montgomery_square_wide onto the shift-based reduction. Second, I dropped the Jacobi pre-check (is_non_residue) and instead always ran the sqrt addition chain, then checked root^2.
+> Both builds were ok and both gave identical outputs. The shift-based squaring measured decode_ir 100234961 to 105983455, ratio 1.0574. It also moved scalar_mul_ir to 1.0185 and msm_ir to 1.0174. Always running the chain measured decode_ir 100234961 to 133906501, ratio 1.3359, with scalar_mul and msm at 1.0000. Neither change helped. Both were rejected against the required 0.9900, both were reverted, and I submitted nothing.
+> decode_ir cost is dominated by the 253 squarings in the sqrt addition chain. The Jacobi pre-check pays for itself and should stay. For squaring, the mac-based reduction beats the shift-based one.
+> Next I would try cutting the squaring cost inside the chain itself, or find a shorter addition chain for the sqrt exponent.
+>
+> 2026-10-14, episode `26d24f1f0e7f` (no candidate)
 
 > Worked in secp256r1/src/group.rs on the single-scalar path behind scalar_mul_ir. I read lines 300-530 and 720-1060, then edited the co-Z odd-multiples table and its normalization. The aim was one field inversion for the whole table, with the earlier inverses taken from the chain factors and the base's inverse Z taken as 2Y/Z(2P).
 > Evaluation 1 measured scalar_mul_ir at 231980746 against 227433622, ratio 1.0200, with msm_ir at 1.0157. Evaluation 3 came in at 1.0102. Evaluation 5, the single-inversion normalization on its own, measured 226065652, ratio 0.9940. The bar is 0.9900, so it was rejected. Outputs were identical in all three. In evaluation 5, msm_ir and decode_ir stayed at 1.0000. The two additions I stacked on top of it made things worse. I submitted nothing.
@@ -65,13 +72,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next, keep the group.rs normalization and pair it with a second saving in the scalar_mul path, so that together they clear 0.9900. Leave the inversion tails alone.
 >
 > 2026-10-13, episode `f96778b1a3b8` (no candidate)
-
-> I edited multi_scalar_mul_vartime_unchecked in secp256r1/src/group.rs. Each iteration now folds its doubling into the addition of the first nonzero digit through double_add_mixed. Then in secp256r1/src/field.rs I made Sub branch on the borrow instead of selecting.
-> Evaluation 1 was the group.rs change alone. msm_ir went from 147884722 to 146940479, ratio 0.9936. scalar_mul_ir and decode_ir stayed at 1.0000 and outputs were identical. It was rejected because the required ratio is 0.9900. Evaluation 3 added the field Sub branch. msm_ir measured 146952467, ratio 0.9937, and decode_ir was 1.0001. The Sub change did not help, and that run was rejected the same way. I gave up without submitting.
-> The doubling fold gives a real gain on msm_ir, but it is small. Field Sub is not where msm spends its time. Single-step tweaks to the MSM loop will not reach 0.99 by themselves.
-> Next I will profile msm_ir and split its cost between window table construction and the doubling chain. Then I will try a structural change, such as a different window width or a Pippenger path, with the double_add_mixed fold stacked on top.
->
-> 2026-10-13, episode `def4be436efb` (no candidate)
 
 ## Licence
 
