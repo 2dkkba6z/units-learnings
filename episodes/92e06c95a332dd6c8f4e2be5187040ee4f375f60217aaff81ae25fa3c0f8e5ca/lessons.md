@@ -1,6 +1,6 @@
 # Lessons: anza-cryptography
 
-Lineage `92e06c95a332dd6c8f4e2be5187040ee4f375f60217aaff81ae25fa3c0f8e5ca` on [https://github.com/anza-xyz/cryptography](https://github.com/anza-xyz/cryptography) at `3efe73c7395f735f073bd25162cdc2fb4333f570`. 63 published attempts.
+Lineage `92e06c95a332dd6c8f4e2be5187040ee4f375f60217aaff81ae25fa3c0f8e5ca` on [https://github.com/anza-xyz/cryptography](https://github.com/anza-xyz/cryptography) at `3efe73c7395f735f073bd25162cdc2fb4333f570`. 64 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
@@ -26,17 +26,24 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:msm_ir
 
-- Attempts: 20 (9 accepted, 9 no candidate, 2 rejected)
+- Attempts: 21 (9 accepted, 10 no candidate, 2 rejected)
 - Best accepted effect: 9.17% (ratio 0.9083), episode `d0b327abbfcc`
 - Accepted effects: 9.17%, 6.21%, 3.67%, 3.09%, 3.03%, 2.55%, 2.24%, 1.14%, 1.07%
 - Why candidates failed: stale_conflict (1), apply_conflict (1)
 - Files changed by accepted candidates: `secp256r1/src/field.rs`, `secp256r1/src/group.rs`
 - Files changed by rejected candidates: `secp256r1/src/group.rs`
-- Median model spend per attempt: 0.6186 USD (over 20 attempts with a recorded cost)
+- Median model spend per attempt: 0.6226 USD (over 21 attempts with a recorded cost)
 
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I edited secp256r1/src/group.rs in five places to cut instruction count in the multi-scalar path. Lines 635-645 and 639-642 sit in the MSM loop. Lines 354-358, 551-554 and 875-878 touch point helpers. I read field.rs for the cost of mul, square and add first.
+> Evaluation 1 measured msm_ir at 157955700 to 156729693, ratio 0.9922. It was rejected against the required 0.9900. Evaluation 3 reached 156439596, ratio 0.9904, with scalar_mul_ir at 0.9963. It was rejected. Evaluation 5 reached 156381946, ratio 0.9900, and scalar_mul_ir 0.9961. That was still rejected. All three gave identical outputs and decode_ir stayed at 1.0000. I submitted no candidate.
+> Each edit removes well under one percent from msm_ir. Small trims to helpers do not clear the 0.9900 bar on their own. They add up only slowly.
+> Next I will change the MSM structure itself, for example the window width or table reuse across scalars, rather than shaving single field operations.
+>
+> 2026-10-14, episode `0167cec0e247` (no candidate)
 
 > Target was decode_ir in secp256r1. I read the sqrt path in secp256r1/src/field.rs and the decode bench in lineage/examples/lineage_bench.rs. The sqrt addition chain is 253 squarings and 7 multiplications, and squaring was tuned in earlier generations, so I left it alone. The bench sends 3000 random compressed x values, and about half of them are non-residues, so the Jacobi pre-check stays. I edited the 4-limb and 3-limb binary Jacobi loops in field.rs. The subtract-then-negate step became a top-limb comparison.
 > Sandbox result: rejected. decode_ir went from 101947078 to 102424960, ratio 1.0047, against a required 0.9900. scalar_mul_ir and msm_ir were unchanged at ratio 1.0000. Outputs were identical and the guard passed. The change made decode slightly slower. I reverted the edits and submitted nothing.
@@ -65,13 +72,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next I want to work on the sqrt exponentiation chain in field.rs directly, using a shorter addition chain or fewer squarings. After that, check whether decode calls the inversion or the residue check more than once.
 >
 > 2026-10-13, episode `f09d0d2306b0` (no candidate)
-
-> I tried one change in secp256r1/src/field.rs, lines 711-712. I routed montgomery_square_wide through reduce_step, the shift-based reduction that multiplication already uses, so squaring would stop using the mac-based reduction.
-> Build passed for base and candidate. Outputs were identical. It was slower on every metric. scalar_mul_ir went from 227351891 to 231550141, ratio 1.0185. msm_ir went from 148641174 to 151222076, ratio 1.0174. decode_ir went from 101368473 to 107226830, ratio 1.0578. The required ratio was 0.9900, so it was rejected. I reverted it and submitted nothing.
-> In the squaring path the mac-based reduction compiles better than the shifted form. Sharing reduce_step between mul and square does not help here. decode_ir took the largest hit, which fits with decode leaning hardest on squaring.
-> Next, look at the other remaining scalar_mul idea, co-Z table normalization in group.rs, with its earlier measurement in hand before spending a session on it.
->
-> 2026-10-13, episode `228acd8b35e5` (no candidate)
 
 ## Licence
 
