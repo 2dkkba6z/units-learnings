@@ -1,6 +1,6 @@
 # Lessons: anza-cryptography
 
-Lineage `92e06c95a332dd6c8f4e2be5187040ee4f375f60217aaff81ae25fa3c0f8e5ca` on [https://github.com/anza-xyz/cryptography](https://github.com/anza-xyz/cryptography) at `3efe73c7395f735f073bd25162cdc2fb4333f570`. 66 published attempts.
+Lineage `92e06c95a332dd6c8f4e2be5187040ee4f375f60217aaff81ae25fa3c0f8e5ca` on [https://github.com/anza-xyz/cryptography](https://github.com/anza-xyz/cryptography) at `3efe73c7395f735f073bd25162cdc2fb4333f570`. 67 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
@@ -26,17 +26,24 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:msm_ir
 
-- Attempts: 21 (9 accepted, 10 no candidate, 2 rejected)
+- Attempts: 22 (9 accepted, 11 no candidate, 2 rejected)
 - Best accepted effect: 9.17% (ratio 0.9083), episode `d0b327abbfcc`
 - Accepted effects: 9.17%, 6.21%, 3.67%, 3.09%, 3.03%, 2.55%, 2.24%, 1.14%, 1.07%
 - Why candidates failed: stale_conflict (1), apply_conflict (1)
 - Files changed by accepted candidates: `secp256r1/src/field.rs`, `secp256r1/src/group.rs`
 - Files changed by rejected candidates: `secp256r1/src/group.rs`
-- Median model spend per attempt: 0.6226 USD (over 21 attempts with a recorded cost)
+- Median model spend per attempt: 0.6351 USD (over 22 attempts with a recorded cost)
 
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I worked on msm_ir in secp256r1/src/group.rs. The target was multi_scalar_mul_vartime_unchecked. My first change folded each step's doubling into its first mixed addition through double_add_mixed. Later I stored the nonzero wNAF digits per position on top of that, bucketed so that all-zero groups of eight digits are skipped.
+> The fold measured msm_ir 149194540 to 148211632, ratio 0.9934, with identical outputs. scalar_mul_ir and decode_ir were unchanged. The bar is 0.9900, so it was rejected. One intermediate edit failed to build, and the field tests failed with it. The bucketed digit storage gave 149235462, ratio 1.0003. That did not help. Its bookkeeping cost more than the zero digits it skipped.
+> The doubling fold is a real but small gain. The per-step loop overhead around the digit scan is not where the cost sits. Most of msm_ir is likely the field mul and square work inside the point ops.
+> Next I will keep the fold and look at field.rs montgomery_square and mul for msm-path savings. I will also check whether the wNAF window width or the table size in MSM_8, MSM_32 and MSM_VAR can be tuned.
+>
+> 2026-10-14, episode `3a23bf0bfab9` (no candidate)
 
 > I tried two changes to decode_ir in secp256r1/src/field.rs. First, I moved montgomery_square_wide onto the shift-based reduction. Second, I dropped the Jacobi pre-check (is_non_residue) and instead always ran the sqrt addition chain, then checked root^2.
 > Both builds were ok and both gave identical outputs. The shift-based squaring measured decode_ir 100234961 to 105983455, ratio 1.0574. It also moved scalar_mul_ir to 1.0185 and msm_ir to 1.0174. Always running the chain measured decode_ir 100234961 to 133906501, ratio 1.3359, with scalar_mul and msm at 1.0000. Neither change helped. Both were rejected against the required 0.9900, both were reverted, and I submitted nothing.
@@ -65,13 +72,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next I want to measure the per-iteration cost of the Jacobi loop directly. I also want to check whether the full-width 4-limb phase can hand off to the 3-limb phase earlier.
 >
 > 2026-10-13, episode `0f924faaeabc` (no candidate)
-
-> Tried two things on secp256r1 scalar mul. In group.rs I changed the single-scalar table normalization so the co-Z chain is inverted through its factors and the base inverse is recovered as 2Y/z2. Then in field.rs I added multi-bit trailing-zero stripping to the u128/u64 inversion tails.
-> Evaluation 1, the normalization alone: scalar_mul_ir went from 227377278 to 226009005, ratio 0.9940, with identical outputs. msm_ir and decode_ir held at 1.0000. Rejected, because the floor is 0.9900. Evaluation 3, normalization plus the tail stripping: scalar_mul_ir 1.0007, msm_ir 1.0044, decode_ir 1.0075. Every metric got worse. I reverted the field.rs change. Nothing was submitted.
-> The co-Z inversion trick is a real gain, but it is too small to count on its own. Trailing-zero stripping in the inversion tails costs more in branches than it saves in shifts.
-> Next, keep the group.rs normalization and pair it with a second saving in the scalar_mul path, so that together they clear 0.9900. Leave the inversion tails alone.
->
-> 2026-10-13, episode `f96778b1a3b8` (no candidate)
 
 ## Licence
 
