@@ -1,18 +1,18 @@
 # Lessons: anza-cryptography
 
-Lineage `92e06c95a332dd6c8f4e2be5187040ee4f375f60217aaff81ae25fa3c0f8e5ca` on [https://github.com/anza-xyz/cryptography](https://github.com/anza-xyz/cryptography) at `3efe73c7395f735f073bd25162cdc2fb4333f570`. 64 published attempts.
+Lineage `92e06c95a332dd6c8f4e2be5187040ee4f375f60217aaff81ae25fa3c0f8e5ca` on [https://github.com/anza-xyz/cryptography](https://github.com/anza-xyz/cryptography) at `3efe73c7395f735f073bd25162cdc2fb4333f570`. 65 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
 ## Target perf:scalar_mul_ir
 
-- Attempts: 21 (10 accepted, 1 rejected, 10 no candidate)
+- Attempts: 22 (10 accepted, 1 rejected, 11 no candidate)
 - Best accepted effect: 7.99% (ratio 0.9201), episode `8bdb0dda22a9`
 - Accepted effects: 7.99%, 4.86%, 3.80%, 3.70%, 3.50%, 3.04%, 2.53%, 2.02%, 1.25%, 1.21%
 - Why candidates failed: duplicate (1)
 - Files changed by accepted candidates: `secp256r1/src/field.rs`, `secp256r1/src/group.rs`
 - Files changed by rejected candidates: `secp256r1/src/group.rs`
-- Median model spend per attempt: 0.6268 USD (over 21 attempts with a recorded cost)
+- Median model spend per attempt: 0.6479 USD (over 22 attempts with a recorded cost)
 
 ## Target perf:decode_ir
 
@@ -37,6 +37,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> Worked in secp256r1/src/group.rs on the single-scalar path behind scalar_mul_ir. I read lines 300-530 and 720-1060, then edited the co-Z odd-multiples table and its normalization. The aim was one field inversion for the whole table, with the earlier inverses taken from the chain factors and the base's inverse Z taken as 2Y/Z(2P).
+> Evaluation 1 measured scalar_mul_ir at 231980746 against 227433622, ratio 1.0200, with msm_ir at 1.0157. Evaluation 3 came in at 1.0102. Evaluation 5, the single-inversion normalization on its own, measured 226065652, ratio 0.9940. The bar is 0.9900, so it was rejected. Outputs were identical in all three. In evaluation 5, msm_ir and decode_ir stayed at 1.0000. The two additions I stacked on top of it made things worse. I submitted nothing.
+> The table normalization is not where most of the cost is. Saving inversions there buys under one percent.
+> Next I should profile the main double-and-add loop in mul_scalar_vartime_unchecked, not the precomputation. After that I can try the window width or mixed additions there.
+>
+> 2026-10-14, episode `9372366d5394` (no candidate)
 
 > I edited secp256r1/src/group.rs in five places to cut instruction count in the multi-scalar path. Lines 635-645 and 639-642 sit in the MSM loop. Lines 354-358, 551-554 and 875-878 touch point helpers. I read field.rs for the cost of mul, square and add first.
 > Evaluation 1 measured msm_ir at 157955700 to 156729693, ratio 0.9922. It was rejected against the required 0.9900. Evaluation 3 reached 156439596, ratio 0.9904, with scalar_mul_ir at 0.9963. It was rejected. Evaluation 5 reached 156381946, ratio 0.9900, and scalar_mul_ir 0.9961. That was still rejected. All three gave identical outputs and decode_ir stayed at 1.0000. I submitted no candidate.
@@ -65,13 +72,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next I will profile msm_ir and split its cost between window table construction and the doubling chain. Then I will try a structural change, such as a different window width or a Pippenger path, with the double_add_mixed fold stacked on top.
 >
 > 2026-10-13, episode `def4be436efb` (no candidate)
-
-> I targeted decode_ir in the secp256r1 crate. I read secp256r1/src/field.rs around the sqrt and pow code and secp256r1/src/group.rs lines 110-165. Then I replaced lines 139-143 of group.rs, 5 lines with 10, on the point decode path.
-> The sandbox evaluation rejected it as no_improvement. decode_ir went from 100132414 to 100019328, ratio 0.9989, and the required ratio was 0.9900. scalar_mul_ir stayed at 227414957 and msm_ir at 150600370, both ratio 1.0000. Base and candidate both built, the outputs were identical, and the guard passed. The change did not help in any way that counts. I did not submit a candidate.
-> Decode cost is not in the code around group.rs lines 139-143. The field sqrt in field.rs is the likely bulk, since it is an exponentiation. Trimming the logic around that call barely moves the count.
-> Next I want to work on the sqrt exponentiation chain in field.rs directly, using a shorter addition chain or fewer squarings. After that, check whether decode calls the inversion or the residue check more than once.
->
-> 2026-10-13, episode `f09d0d2306b0` (no candidate)
 
 ## Licence
 
